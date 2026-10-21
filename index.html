@@ -68,6 +68,7 @@
     a:focus-visible,
     button:focus-visible,
     summary:focus-visible,
+    select:focus-visible,
     input:focus-visible {
       outline: 3px solid #0d0d0d;
       outline-offset: 2px;
@@ -562,6 +563,147 @@
       color: #315347;
     }
 
+    .bulk,
+    .swell {
+      grid-column: span 12;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .field-row label {
+      font-size: 0.92rem;
+    }
+
+    .field-row input[type="number"],
+    .field-row select {
+      font: inherit;
+      padding: 5px 8px;
+      border: 1px solid #a6cbc0;
+      border-radius: 8px;
+      background: #fff;
+      max-width: 100%;
+    }
+
+    .field-row input[type="number"] {
+      width: 6.5em;
+    }
+
+    fieldset.check-grid {
+      margin: 10px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+    }
+
+    fieldset.check-grid legend {
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0 6px;
+    }
+
+    fieldset.check-grid label {
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .status-line {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: #294c40;
+      overflow-wrap: anywhere;
+    }
+
+    progress.bulk-progress {
+      width: 100%;
+      height: 14px;
+      margin-top: 8px;
+      accent-color: var(--brand);
+    }
+
+    details.issues {
+      margin-top: 8px;
+      font-size: 0.88rem;
+      color: #5a3a10;
+    }
+
+    details.issues ul {
+      margin: 6px 0 0;
+      padding-left: 1.2rem;
+      max-height: 160px;
+      overflow: auto;
+    }
+
+    .note-small {
+      margin-top: 8px;
+      font-size: 0.86rem;
+      color: #3f5d52;
+    }
+
+    .pager {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 0.88rem;
+    }
+
+    .data-table-wrap {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 420px;
+      background: #fff;
+    }
+
+    .data-table-wrap table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.84rem;
+    }
+
+    .data-table-wrap th,
+    .data-table-wrap td {
+      border-bottom: 1px solid #e1eee8;
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .data-table-wrap th {
+      position: sticky;
+      top: 0;
+      background: #f0faf5;
+      color: #2a4a3f;
+    }
+
+    .data-table-wrap td.err {
+      color: #9b1c1c;
+      white-space: normal;
+    }
+
+    .corr-cell small {
+      display: block;
+      color: #4a665d;
+    }
+
     .site-footer {
       margin: 20px auto 0;
       width: min(1160px, 92vw);
@@ -688,7 +830,7 @@
         <div class="step-cards">
           <section class="step-card">
             <h4><span class="step-num">1</span>Drop images</h4>
-            <p>Drag and drop JPG/PNG files into the input zone. Choose one reference image and one monitoring image.</p>
+            <p>Drag and drop JPG/PNG files or a whole folder (sub-folders included) anywhere on the page. Choose one reference image and one monitoring image, or run Bulk Analysis on everything loaded and cross-reference it with swell data.</p>
           </section>
           <section class="step-card">
             <h4><span class="step-num">2</span>Run metric buttons</h4>
@@ -725,14 +867,25 @@
           For full-reference metrics, choose a clean reference image and a monitoring image.
         </p>
 
-        <section class="drop-zone" id="dropZone" aria-label="Image file drop zone">
-          <p><strong>Drop images here</strong> or use the browse button.</p>
-          <p>Supported formats: JPG, JPEG, PNG</p>
-          <label class="file-trigger" for="fileInput">Browse image files</label>
-          <input id="fileInput" type="file" accept="image/jpeg,image/png" multiple hidden />
+        <section class="drop-zone" id="dropZone" aria-label="Image file and folder drop zone">
+          <p><strong>Drop images or whole folders anywhere on this page</strong> (sub-folders are scanned automatically).</p>
+          <p>Supported formats: JPG, JPEG, PNG. Hidden files, thumbnails and non-image files are skipped and reported.</p>
+          <div class="btn-row" style="justify-content:center;">
+            <button class="file-trigger" id="browseFilesBtn" type="button">Browse image files</button>
+            <button class="file-trigger" id="browseFolderBtn" type="button">Browse a folder</button>
+            <button class="btn" id="cancelIngestBtn" type="button" hidden>Cancel scan</button>
+          </div>
+          <input id="fileInput" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" multiple hidden />
+          <input id="folderInput" type="file" webkitdirectory multiple hidden />
         </section>
 
-        <div class="file-list" id="fileList" aria-live="polite">No images loaded.</div>
+        <p class="status-line" id="ingestStatus" role="status" aria-live="polite"></p>
+        <details class="issues" id="ingestIssues" hidden>
+          <summary id="ingestIssuesSummary">Skipped items</summary>
+          <ul id="ingestIssuesList"></ul>
+        </details>
+
+        <div class="file-list" id="fileList">No images loaded.</div>
 
         <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
           <label for="referenceSelect"><strong>Reference image:</strong></label>
@@ -807,6 +960,135 @@
               No results yet.
             </div>
           </section>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid" aria-label="Bulk analysis and swell cross-reference">
+      <article class="panel bulk" id="bulk-analysis" aria-labelledby="bulk-title">
+        <h2 id="bulk-title">Bulk Analysis (whole folder)</h2>
+        <p>
+          Analyses every loaded image in background workers, so the page stays responsive.
+          Results are autosaved in this browser, so after a crash or reload you can drop the same folder again and only the missing images are processed.
+          Full-reference metrics use the <strong>Reference image</strong> chosen above.
+        </p>
+
+        <fieldset class="check-grid" id="bulkMetricBoxes">
+          <legend>Metrics</legend>
+          <label><input type="checkbox" value="ssim" checked /> SSIM</label>
+          <label><input type="checkbox" value="psnr" checked /> PSNR</label>
+          <label><input type="checkbox" value="deltae" checked /> Delta E 2000</label>
+          <label><input type="checkbox" value="michelson" checked /> Michelson</label>
+          <label><input type="checkbox" value="intensity_std" checked /> Intensity std</label>
+          <label><input type="checkbox" value="entropy" checked /> Entropy</label>
+          <label><input type="checkbox" value="laplacian" checked /> Laplacian variance</label>
+        </fieldset>
+
+        <div class="field-row">
+          <label for="bulkMaxDim">Analysis size (max px per side)
+            <select id="bulkMaxDim">
+              <option value="512" selected>512 (same as single-image mode)</option>
+              <option value="1024">1024</option>
+              <option value="2048">2048</option>
+            </select>
+          </label>
+          <label for="bulkWorkers">Parallel workers
+            <input id="bulkWorkers" type="number" min="1" max="8" step="1" value="2" />
+          </label>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="bulkRunBtn" type="button">Analyse all loaded images</button>
+          <button class="btn" id="bulkPauseBtn" type="button" disabled>Pause</button>
+          <button class="btn" id="bulkCancelBtn" type="button" disabled>Cancel</button>
+          <button class="btn" id="bulkRetryBtn" type="button" disabled>Retry failed</button>
+          <button class="btn" id="bulkExportBtn" type="button">Export batch CSV</button>
+          <button class="btn" id="bulkClearBtn" type="button">Clear stored results</button>
+        </div>
+
+        <progress class="bulk-progress" id="bulkProgress" value="0" max="1" aria-label="Batch progress"></progress>
+        <p class="status-line" id="bulkStatus" role="status" aria-live="polite">No batch run yet.</p>
+        <details class="issues" id="bulkIssues" hidden>
+          <summary id="bulkIssuesSummary">Failed images</summary>
+          <ul id="bulkIssuesList"></ul>
+        </details>
+
+        <div class="data-table-wrap" id="bulkTableWrap" tabindex="0" role="region" aria-label="Batch results table">
+          <p style="padding:10px;">No batch results yet.</p>
+        </div>
+        <div class="pager">
+          <button class="btn" id="bulkPrevBtn" type="button">Previous</button>
+          <span id="bulkPageLabel"></span>
+          <button class="btn" id="bulkNextBtn" type="button">Next</button>
+        </div>
+      </article>
+
+      <article class="panel swell" id="swell-crossref" aria-labelledby="swell-title">
+        <h2 id="swell-title">Swell Cross-Reference</h2>
+        <p>
+          Join image optics with wave data (for example NDBC or CDIP buoy exports near your site) by timestamp,
+          then see which optical metrics move with swell conditions.
+          Everything runs locally; the data never leaves your browser.
+        </p>
+
+        <section class="drop-zone" id="swellDropZone" aria-label="Swell data drop zone">
+          <p><strong>Drop swell data file(s) here</strong> (CSV, TSV or whitespace text; several files are merged, e.g. one per year).</p>
+          <p>Time columns are detected automatically: a single ISO / date-time column, or NDBC-style <code>YY MM DD hh mm</code>.</p>
+          <button class="file-trigger" id="swellBrowseBtn" type="button">Browse swell files</button>
+          <input id="swellInput" type="file" accept=".csv,.tsv,.txt,.dat,.log,text/*" multiple hidden />
+        </section>
+        <p class="status-line" id="swellInfo" role="status" aria-live="polite">No swell data loaded.</p>
+
+        <div class="field-row">
+          <label for="timeSource">Image time source
+            <select id="timeSource">
+              <option value="auto" selected>Auto: EXIF, then file name, then file modified</option>
+              <option value="exif">EXIF only</option>
+              <option value="filename">File name only</option>
+              <option value="modified">File modified time only</option>
+            </select>
+          </label>
+          <label for="cameraOffset">Camera clock UTC offset (h)
+            <input id="cameraOffset" type="number" step="0.5" min="-12" max="14" value="-10" />
+          </label>
+          <label for="swellOffset">Swell file UTC offset (h)
+            <input id="swellOffset" type="number" step="0.5" min="-12" max="14" value="0" />
+          </label>
+          <label for="tolerance">Max time gap (min)
+            <input id="tolerance" type="number" step="5" min="1" max="1440" value="30" />
+          </label>
+        </div>
+        <p class="note-small">
+          Defaults: camera clock on Hawaii Standard Time (UTC-10, no daylight saving) and swell data in UTC, which is what NDBC files use.
+          EXIF carries no time zone unless the camera writes one, so set the camera offset to match its clock.
+          Files without a time zone in each row use the swell offset above.
+        </p>
+
+        <fieldset class="check-grid" id="swellVarBoxes">
+          <legend>Swell variables</legend>
+          <span style="font-size:0.9rem;">Load swell data to choose variables.</span>
+        </fieldset>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="swellRunBtn" type="button">Cross-reference with batch results</button>
+          <button class="btn" id="swellExportBtn" type="button" disabled>Export merged CSV</button>
+        </div>
+        <p class="status-line" id="swellSummary" role="status" aria-live="polite"></p>
+
+        <h3 style="margin-top:14px;">Association (Spearman rank correlation)</h3>
+        <div class="data-table-wrap" id="corrWrap" tabindex="0" role="region" aria-label="Correlation table">
+          <p style="padding:10px;">Run the cross-reference to see correlations.</p>
+        </div>
+        <p class="note-small">
+          Each cell shows rho (raw), the time-detrended rho (partial correlation controlling for linear time), and n.
+          Fouling usually grows steadily with time, so a raw rho can reflect a shared trend rather than a swell effect; judge by the detrended value.
+          Direction variables use a circular-linear correlation R (0 to 1, no sign).
+          Correlation is not causation and no significance test is applied because consecutive samples are autocorrelated.
+        </p>
+
+        <h3 style="margin-top:14px;">Merged rows (first 50)</h3>
+        <div class="data-table-wrap" id="joinWrap" tabindex="0" role="region" aria-label="Merged image and swell rows">
+          <p style="padding:10px;">Nothing merged yet.</p>
         </div>
       </article>
     </section>
@@ -927,8 +1209,550 @@
     <p>Computed in-browser: SSIM, PSNR, Delta E 2000, Michelson contrast, intensity std, entropy, Laplacian variance.</p>
   </footer>
 
+  <script type="text/plain" id="bf-lib">
+const BFLib = (function () {
+  "use strict";
+
+  const IMAGE_RE = /\.(jpe?g|png)$/i;
+  const MAX_DEPTH = 64;
+  const JUNK_SEGMENTS = new Set(["__MACOSX", "@eaDir", "#recycle", "$RECYCLE.BIN", "System Volume Information"]);
+
+  function isJunkPath(path) {
+    return path.split("/").some((seg) => seg.startsWith(".") || JUNK_SEGMENTS.has(seg));
+  }
+
+  function extOf(name) {
+    const m = /\.([^.\/]+)$/.exec(name);
+    return m ? "." + m[1].toLowerCase() : "(no extension)";
+  }
+
+  // ---------- Folder / drop ingestion ----------
+
+  // Must run synchronously inside the drop handler: the DataTransfer is emptied after the first await.
+  function snapshotDrop(dt) {
+    const roots = [];
+    const items = dt && dt.items ? Array.from(dt.items) : [];
+    for (const item of items) {
+      if (item.kind !== "file") continue;
+      const entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+      roots.push(entry ? { entry, file: null } : { entry: null, file: item.getAsFile() });
+    }
+    if (!roots.length && dt && dt.files) {
+      for (const file of Array.from(dt.files)) roots.push({ entry: null, file });
+    }
+    return roots.filter((r) => r.entry || r.file);
+  }
+
+  // readEntries() returns results in batches (about 100 in Chromium), so it must be called until it returns [].
+  async function readAllEntries(reader, signal) {
+    const all = [];
+    for (;;) {
+      if (signal && signal.aborted) return all;
+      const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+      if (!batch.length) return all;
+      for (const e of batch) all.push(e);
+    }
+  }
+
+  function entryToFile(entry) {
+    return new Promise((resolve, reject) => entry.file(resolve, reject));
+  }
+
+  async function mapLimit(list, limit, fn) {
+    let next = 0;
+    const workers = Array.from({ length: Math.min(limit, list.length) }, async () => {
+      while (next < list.length) {
+        const i = next;
+        next += 1;
+        await fn(list[i]);
+      }
+    });
+    await Promise.all(workers);
+  }
+
+  // hooks: { signal, onFile(file, path), onSkip(kind, path), onError(path, err), onDir(path) }
+  async function walkRoots(roots, hooks) {
+    const { signal } = hooks;
+
+    function acceptFile(file, path) {
+      if (isJunkPath(path)) return hooks.onSkip("hidden", path);
+      if (!IMAGE_RE.test(path)) return hooks.onSkip(extOf(path), path);
+      if (file.size === 0) return hooks.onSkip("empty", path);
+      return hooks.onFile(file, path);
+    }
+
+    const stack = [];
+    for (const root of roots) {
+      if (root.entry) stack.push({ entry: root.entry, depth: 0 });
+      else if (root.file) acceptFile(root.file, root.file.webkitRelativePath || root.file.name);
+    }
+
+    while (stack.length) {
+      if (signal && signal.aborted) return;
+      const { entry, depth } = stack.pop();
+      const path = (entry.fullPath || entry.name || "").replace(/^\/+/, "");
+      try {
+        if (entry.isFile) {
+          if (isJunkPath(path) || !IMAGE_RE.test(path)) {
+            acceptFile({ size: 1 }, path);
+          } else {
+            acceptFile(await entryToFile(entry), path);
+          }
+        } else if (entry.isDirectory) {
+          if (isJunkPath(path)) {
+            hooks.onSkip("hidden", path);
+            continue;
+          }
+          if (depth >= MAX_DEPTH) throw new Error("folder nesting too deep");
+          hooks.onDir(path);
+          const children = await readAllEntries(entry.createReader(), signal);
+          const files = children.filter((c) => c.isFile);
+          const dirs = children.filter((c) => !c.isFile);
+          await mapLimit(files, 8, async (child) => {
+            const childPath = (child.fullPath || child.name).replace(/^\/+/, "");
+            try {
+              if (signal && signal.aborted) return;
+              if (isJunkPath(childPath) || !IMAGE_RE.test(childPath)) {
+                acceptFile({ size: 1 }, childPath);
+              } else {
+                acceptFile(await entryToFile(child), childPath);
+              }
+            } catch (err) {
+              hooks.onError(childPath, err);
+            }
+          });
+          dirs.sort((a, b) => b.name.localeCompare(a.name));
+          for (const d of dirs) stack.push({ entry: d, depth: depth + 1 });
+        }
+      } catch (err) {
+        hooks.onError(path, err);
+      }
+    }
+  }
+
+  // ---------- Timestamps ----------
+
+  function validParts(y, mo, d, h, mi, s) {
+    return y >= 1990 && y <= 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && h <= 23 && mi <= 59 && s <= 60;
+  }
+
+  function parseExifDateString(str) {
+    const m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(str || "");
+    if (!m) return null;
+    const p = m.slice(1, 7).map(Number);
+    if (!validParts(p[0], p[1], p[2], p[3], p[4], p[5])) return null;
+    return Date.UTC(p[0], p[1] - 1, p[2], p[3], p[4], p[5]);
+  }
+
+  function parseOffsetString(str) {
+    const m = /^([+-])(\d{2}):?(\d{2})$/.exec((str || "").trim());
+    return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : null;
+  }
+
+  function parseTiff(view, base, end) {
+    if (base + 8 > end) return null;
+    const order = view.getUint16(base);
+    if (order !== 0x4949 && order !== 0x4d4d) return null;
+    const le = order === 0x4949;
+    if (view.getUint16(base + 2, le) !== 42) return null;
+
+    function readIfd(rel) {
+      const tags = new Map();
+      const start = base + rel;
+      if (rel < 8 || start + 2 > end) return tags;
+      const count = view.getUint16(start, le);
+      for (let i = 0; i < count; i += 1) {
+        const p = start + 2 + i * 12;
+        if (p + 12 > end) break;
+        const type = view.getUint16(p + 2, le);
+        const n = view.getUint32(p + 4, le);
+        const inline = type === 2 && n <= 4;
+        tags.set(view.getUint16(p, le), { type, n, valuePos: inline ? p + 8 : base + view.getUint32(p + 8, le), long: view.getUint32(p + 8, le) });
+      }
+      return tags;
+    }
+
+    function ascii(tag) {
+      if (!tag || tag.type !== 2 || tag.valuePos < base || tag.valuePos + tag.n > end) return null;
+      let s = "";
+      for (let i = 0; i < tag.n; i += 1) {
+        const c = view.getUint8(tag.valuePos + i);
+        if (c === 0) break;
+        s += String.fromCharCode(c);
+      }
+      return s;
+    }
+
+    const ifd0 = readIfd(view.getUint32(base + 4, le));
+    const exifPtr = ifd0.get(0x8769);
+    const exif = exifPtr ? readIfd(exifPtr.long) : new Map();
+    const naiveMs = parseExifDateString(ascii(exif.get(0x9003))) ??
+      parseExifDateString(ascii(exif.get(0x9004))) ??
+      parseExifDateString(ascii(ifd0.get(0x0132)));
+    if (naiveMs == null) return null;
+    return { naiveMs, offsetMin: parseOffsetString(ascii(exif.get(0x9011))) };
+  }
+
+  // Returns { naiveMs, offsetMin|null } where naiveMs is the camera wall-clock time read as if it were UTC.
+  function parseExif(buffer) {
+    const view = new DataView(buffer);
+    const len = view.byteLength;
+    if (len < 4 || view.getUint16(0) !== 0xffd8) return null;
+    let off = 2;
+    while (off + 4 <= len) {
+      if (view.getUint8(off) !== 0xff) return null;
+      const marker = view.getUint8(off + 1);
+      if (marker === 0xff) {
+        off += 1;
+        continue;
+      }
+      if (marker === 0xda || marker === 0xd9) return null;
+      const size = view.getUint16(off + 2);
+      if (size < 2) return null;
+      if (marker === 0xe1 && off + 10 <= len && view.getUint32(off + 4) === 0x45786966 && view.getUint16(off + 8) === 0) {
+        return parseTiff(view, off + 10, Math.min(len, off + 2 + size));
+      }
+      off += 2 + size;
+    }
+    return null;
+  }
+
+  async function readExif(file) {
+    if (!/\.jpe?g$/i.test(file.name)) return null;
+    try {
+      return parseExif(await file.slice(0, 262144).arrayBuffer());
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // Returns { ms, absolute } for epoch names, or { naiveMs } for wall-clock names; null if no timestamp is found.
+  function parseFilenameTime(path) {
+    const base = path.split("/").pop().replace(/\.[^.]+$/, "");
+    if (/^\d{10}$/.test(base) || /^\d{13}$/.test(base)) {
+      const ms = base.length === 10 ? Number(base) * 1000 : Number(base);
+      return ms > Date.UTC(2000, 0, 1) && ms < Date.UTC(2100, 0, 1) ? { ms, absolute: true } : null;
+    }
+    const m = /(20\d{2})[-_.]?(0[1-9]|1[0-2])[-_.]?(0[1-9]|[12]\d|3[01])[T_\-. ]?([01]\d|2[0-3])[-_.:]?([0-5]\d)(?:[-_.:]?([0-5]\d))?/.exec(base);
+    if (!m) return null;
+    return { naiveMs: Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) };
+  }
+
+  // ---------- Swell data ----------
+
+  function splitLine(line, delim) {
+    if (delim === "ws") return line.trim().split(/\s+/);
+    if (!line.includes('"')) return line.split(delim);
+    const out = [];
+    let cur = "";
+    let quoted = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') {
+            cur += '"';
+            i += 1;
+          } else {
+            quoted = false;
+          }
+        } else {
+          cur += ch;
+        }
+      } else if (ch === '"') {
+        quoted = true;
+      } else if (ch === delim) {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  function tzToMs(tz) {
+    if (tz == null) return null;
+    if (/^z$/i.test(tz)) return 0;
+    const min = parseOffsetString(tz);
+    return min == null ? null : min * 60000;
+  }
+
+  // Returns { naiveMs, tzMs|null }; tzMs is the offset east of UTC when the string carries one.
+  function parseTimeString(raw) {
+    const s = String(raw).trim().replace(/^"|"$/g, "");
+    let m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?\s*(Z|[+-]\d{2}:?\d{2})?$/i.exec(s);
+    if (m) {
+      const p = [+m[1], +m[2], +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)];
+      if (!validParts(...p)) return null;
+      return { naiveMs: Date.UTC(p[0], p[1] - 1, p[2], p[3], p[4], p[5]), tzMs: tzToMs(m[7]) };
+    }
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i.exec(s);
+    if (m) {
+      let h = +(m[4] || 0);
+      if (m[7]) h = (h % 12) + (/pm/i.test(m[7]) ? 12 : 0);
+      const p = [+m[3], +m[1], +m[2], h, +(m[5] || 0), +(m[6] || 0)];
+      if (!validParts(...p)) return null;
+      return { naiveMs: Date.UTC(p[0], p[1] - 1, p[2], p[3], p[4], p[5]), tzMs: null };
+    }
+    if (/^\d{10}(\.\d+)?$/.test(s)) return { naiveMs: Number(s) * 1000, tzMs: 0 };
+    if (/^\d{13}$/.test(s)) return { naiveMs: Number(s), tzMs: 0 };
+    return null;
+  }
+
+  const MISSING_TOKENS = new Set(["", "mm", "nan", "na", "n/a", "null", "none", "-", "--"]);
+
+  function parseValue(tok, ndbc) {
+    const s = String(tok).trim().replace(/^"|"$/g, "");
+    if (MISSING_TOKENS.has(s.toLowerCase())) return NaN;
+    const v = Number(s);
+    if (!Number.isFinite(v)) return NaN;
+    // NDBC historical files mark missing data with runs of 9s (99.0, 999, 9999.0).
+    if (ndbc && /^-?9{2,}(\.0+)?$/.test(s)) return NaN;
+    return v;
+  }
+
+  function isDirectionName(name) {
+    return /^(MWD|WDIR|SwD|WWD|Dp|Dm)$/i.test(name) || /dir|wavedp|wavedm/i.test(name);
+  }
+
+  function detectTimeSpec(header) {
+    const h = header.map((t) => t.replace(/^#\s*/, "").trim());
+    if (h.length >= 4 && /^(yy|yyyy|year)$/i.test(h[0]) && /^(mm|mo|month)$/i.test(h[1]) && /^(dd|dy|day)$/i.test(h[2]) && /^(hh|hr|hour)$/i.test(h[3])) {
+      const hasMin = h.length > 4 && /^(mm|mn|min|minute)$/i.test(h[4]);
+      return { kind: "ymd", cols: hasMin ? [0, 1, 2, 3, 4] : [0, 1, 2, 3], ndbc: true };
+    }
+    const date = h.findIndex((t) => /^date$/i.test(t));
+    const time = h.findIndex((t) => /^time$/i.test(t));
+    if (date >= 0 && time >= 0) return { kind: "dateTime", cols: [date, time], ndbc: false };
+    const single = h.findIndex((t) => /^(time|datetime|date_time|timestamp|utc|valid|date)/i.test(t));
+    if (single >= 0) return { kind: "single", cols: [single], ndbc: false };
+    return null;
+  }
+
+  function rowTime(tokens, spec) {
+    if (spec.kind === "ymd") {
+      const n = spec.cols.map((c) => Number(tokens[c]));
+      if (n.some((v) => !Number.isFinite(v))) return null;
+      const year = n[0] < 100 ? (n[0] < 70 ? 2000 + n[0] : 1900 + n[0]) : n[0];
+      if (!validParts(year, n[1], n[2], n[3], n[4] || 0, 0)) return null;
+      return { naiveMs: Date.UTC(year, n[1] - 1, n[2], n[3], n[4] || 0), tzMs: null };
+    }
+    if (spec.kind === "dateTime") return parseTimeString(`${tokens[spec.cols[0]]} ${tokens[spec.cols[1]]}`.replace(/"/g, ""));
+    return parseTimeString(tokens[spec.cols[0]]);
+  }
+
+  function parseSwellText(text, label) {
+    const lines = String(text).replace(/^\uFEFF/, "").split(/\r?\n/);
+    const firstData = lines.find((l) => l.trim());
+    if (!firstData) throw new Error("file is empty");
+    const sample = lines.filter((l) => l.trim()).slice(0, 20).join("\n");
+    const commas = (sample.match(/,/g) || []).length;
+    const tabs = (sample.match(/\t/g) || []).length;
+    const delim = commas > 0 && commas >= tabs ? "," : tabs > 0 ? "\t" : "ws";
+
+    let headerIdx = -1;
+    let header = null;
+    for (let i = 0; i < lines.length && i < 300; i += 1) {
+      if (!lines[i].trim()) continue;
+      const tokens = splitLine(lines[i].replace(/^\s*#\s*/, ""), delim).map((t) => t.trim());
+      const nonNumeric = tokens.filter((t) => t && !Number.isFinite(Number(t))).length;
+      if (tokens.length >= 3 && nonNumeric >= 2 && detectTimeSpec(tokens)) {
+        headerIdx = i;
+        header = tokens;
+        break;
+      }
+    }
+    if (!header) throw new Error("could not find a header row with a recognisable time column");
+
+    const spec = detectTimeSpec(header);
+    const timeCols = new Set(spec.cols);
+    const valueCols = header.map((name, i) => ({ name, i })).filter((c) => !timeCols.has(c.i) && c.name);
+    const rows = [];
+    let skipped = 0;
+    for (let i = headerIdx + 1; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (!line.trim() || /^\s*#/.test(line)) continue;
+      const tokens = splitLine(line, delim);
+      const t = tokens.length >= Math.ceil(header.length / 2) ? rowTime(tokens, spec) : null;
+      if (!t) {
+        skipped += 1;
+        continue;
+      }
+      rows.push({ naiveMs: t.naiveMs, tzMs: t.tzMs, v: Float64Array.from(valueCols, (c) => parseValue(tokens[c.i] ?? "", spec.ndbc)) });
+    }
+
+    const keep = valueCols.map((c, idx) => rows.reduce((n, r) => n + (Number.isFinite(r.v[idx]) ? 1 : 0), 0) >= 3);
+    const columns = valueCols.filter((_, idx) => keep[idx]).map((c) => c.name);
+    const keptIdx = valueCols.map((_, idx) => idx).filter((idx) => keep[idx]);
+    for (const r of rows) r.v = Float64Array.from(keptIdx, (idx) => r.v[idx]);
+    if (!rows.length) throw new Error("no rows with a parseable timestamp");
+    if (!columns.length) throw new Error("no numeric columns found");
+    return { label: label || "", columns, rows, skipped, ndbc: spec.ndbc, delimiter: delim === "ws" ? "whitespace" : delim === "\t" ? "tab" : "comma" };
+  }
+
+  function mergeSwell(parsedList) {
+    const columns = [];
+    for (const p of parsedList) for (const c of p.columns) if (!columns.includes(c)) columns.push(c);
+    const rows = [];
+    for (const p of parsedList) {
+      const map = p.columns.map((c) => columns.indexOf(c));
+      for (const r of p.rows) {
+        const v = new Float64Array(columns.length).fill(NaN);
+        map.forEach((u, k) => {
+          v[u] = r.v[k];
+        });
+        rows.push({ naiveMs: r.naiveMs, tzMs: r.tzMs, v });
+      }
+    }
+    return { columns, rows, skipped: parsedList.reduce((n, p) => n + p.skipped, 0) };
+  }
+
+  // Resolve to absolute UTC and sort ascending (NDBC realtime files are newest-first).
+  function resolveSwell(merged, offsetHours) {
+    const rows = merged.rows.map((r) => ({
+      t: r.tzMs != null ? r.naiveMs - r.tzMs : r.naiveMs - offsetHours * 3600000,
+      v: r.v
+    }));
+    rows.sort((a, b) => a.t - b.t);
+    return rows;
+  }
+
+  // times: array of ms|null; rows: sorted [{t}]; returns array of { idx, dtMs } | null.
+  function nearestJoin(times, rows, tolMs) {
+    return times.map((t) => {
+      if (t == null || !rows.length) return null;
+      let lo = 0;
+      let hi = rows.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (rows[mid].t < t) lo = mid + 1;
+        else hi = mid;
+      }
+      let best = lo;
+      if (lo > 0 && Math.abs(rows[lo - 1].t - t) <= Math.abs(rows[lo].t - t)) best = lo - 1;
+      const dtMs = rows[best].t - t;
+      return Math.abs(dtMs) <= tolMs ? { idx: best, dtMs } : null;
+    });
+  }
+
+  // ---------- Statistics ----------
+
+  function rank(arr) {
+    const idx = Array.from(arr, (v, i) => i).sort((a, b) => arr[a] - arr[b]);
+    const out = new Float64Array(arr.length);
+    for (let i = 0; i < idx.length;) {
+      let j = i;
+      while (j + 1 < idx.length && arr[idx[j + 1]] === arr[idx[i]]) j += 1;
+      const r = (i + j) / 2 + 1;
+      for (let k = i; k <= j; k += 1) out[idx[k]] = r;
+      i = j + 1;
+    }
+    return out;
+  }
+
+  function pearson(x, y) {
+    const n = x.length;
+    let mx = 0;
+    let my = 0;
+    for (let i = 0; i < n; i += 1) {
+      mx += x[i];
+      my += y[i];
+    }
+    mx /= n;
+    my /= n;
+    let sxy = 0;
+    let sxx = 0;
+    let syy = 0;
+    for (let i = 0; i < n; i += 1) {
+      const dx = x[i] - mx;
+      const dy = y[i] - my;
+      sxy += dx * dy;
+      sxx += dx * dx;
+      syy += dy * dy;
+    }
+    return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : NaN;
+  }
+
+  function detrend(y, t) {
+    const n = y.length;
+    let mt = 0;
+    let my = 0;
+    for (let i = 0; i < n; i += 1) {
+      mt += t[i];
+      my += y[i];
+    }
+    mt /= n;
+    my /= n;
+    let stt = 0;
+    let sty = 0;
+    for (let i = 0; i < n; i += 1) {
+      stt += (t[i] - mt) * (t[i] - mt);
+      sty += (t[i] - mt) * (y[i] - my);
+    }
+    const slope = stt > 0 ? sty / stt : 0;
+    return Float64Array.from(y, (v, i) => v - my - slope * (t[i] - mt));
+  }
+
+  // Spearman rho plus the same with a linear time trend removed from both ranked series.
+  function spearman(x, y, t) {
+    const n = x.length;
+    if (n < 5) return { rho: NaN, detrended: NaN, n };
+    const rx = rank(x);
+    const ry = rank(y);
+    return { rho: pearson(rx, ry), detrended: pearson(detrend(rx, t), detrend(ry, t)), n };
+  }
+
+  function multipleR(rxc, rxs, rcs) {
+    const d = 1 - rcs * rcs;
+    if (!(d > 1e-9)) return NaN;
+    return Math.sqrt(Math.max(0, (rxc * rxc + rxs * rxs - 2 * rxc * rxs * rcs) / d));
+  }
+
+  // Circular-linear correlation between a linear variable x and an angle in degrees.
+  function circularLinear(x, deg, t) {
+    const n = x.length;
+    if (n < 5) return { rho: NaN, detrended: NaN, n };
+    const rx = rank(x);
+    const c = Float64Array.from(deg, (d) => Math.cos((d * Math.PI) / 180));
+    const s = Float64Array.from(deg, (d) => Math.sin((d * Math.PI) / 180));
+    const raw = multipleR(pearson(rx, c), pearson(rx, s), pearson(c, s));
+    const rxd = detrend(rx, t);
+    const cd = detrend(c, t);
+    const sd = detrend(s, t);
+    return { rho: raw, detrended: multipleR(pearson(rxd, cd), pearson(rxd, sd), pearson(cd, sd)), n };
+  }
+
+  // ---------- CSV ----------
+
+  function csvCell(v) {
+    if (v == null) return "";
+    if (typeof v === "number") return Number.isNaN(v) ? "" : String(v);
+    let s = String(v);
+    if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s;
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function toCsv(header, rows) {
+    const out = [header.map(csvCell).join(",")];
+    for (const r of rows) out.push(r.map(csvCell).join(","));
+    return out.join("\n");
+  }
+
+  return {
+    isJunkPath, snapshotDrop, readAllEntries, walkRoots,
+    parseExif, readExif, parseFilenameTime,
+    parseTimeString, parseSwellText, mergeSwell, resolveSwell, nearestJoin, isDirectionName,
+    rank, pearson, detrend, spearman, circularLinear,
+    csvCell, toCsv
+  };
+})();
+  </script>
+
   <script>
     (function () {
+      const BFLib = new Function(document.getElementById("bf-lib").textContent + "\nreturn BFLib;")();
       const dropZone = document.getElementById("dropZone");
       const fileInput = document.getElementById("fileInput");
       const fileList = document.getElementById("fileList");
@@ -950,6 +1774,9 @@
 
       const imageStore = [];
       const results = [];
+      const FILE_LIST_LIMIT = 200;
+      const MAX_IMAGES = 50000;
+      const swellDropZone = document.getElementById("swellDropZone");
 
       function setViewMode(mode) {
         if (mode === "before") {
@@ -976,6 +1803,9 @@
       });
 
       function updateFileUI() {
+        const prevRef = imageStore[Number(referenceSelect.value)];
+        const prevMon = imageStore[Number(monitorSelect.value)];
+
         if (!imageStore.length) {
           fileList.textContent = "No images loaded.";
           referenceSelect.innerHTML = "";
@@ -984,24 +1814,28 @@
           return;
         }
 
-        const listHtml = imageStore
-          .map((item, idx) => `<li>${idx + 1}. ${escapeHtml(item.file.name)} (${Math.round(item.file.size / 1024)} KB)</li>`)
+        const totalBytes = imageStore.reduce((n, item) => n + item.file.size, 0);
+        const shown = imageStore.slice(0, FILE_LIST_LIMIT);
+        const listHtml = shown
+          .map((item, idx) => `<li>${idx + 1}. ${escapeHtml(item.path)} (${Math.round(item.file.size / 1024)} KB)</li>`)
           .join("");
-        fileList.innerHTML = `<ul>${listHtml}</ul>`;
+        const more = imageStore.length > shown.length ? `<p>... and ${(imageStore.length - shown.length).toLocaleString()} more</p>` : "";
+        fileList.innerHTML = `<p><strong>${imageStore.length.toLocaleString()} images</strong> (${(totalBytes / 1048576).toFixed(1)} MB)</p><ul>${listHtml}</ul>${more}`;
 
         const options = imageStore
-          .map((item, idx) => `<option value="${idx}">${escapeHtml(item.file.name)}</option>`)
+          .map((item, idx) => `<option value="${idx}">${escapeHtml(item.path)}</option>`)
           .join("");
 
         referenceSelect.innerHTML = options;
         monitorSelect.innerHTML = options;
-        if (imageStore.length > 1) {
-          monitorSelect.selectedIndex = 1;
-        }
+        const refIdx = prevRef ? imageStore.indexOf(prevRef) : -1;
+        const monIdx = prevMon ? imageStore.indexOf(prevMon) : -1;
+        referenceSelect.selectedIndex = refIdx >= 0 ? refIdx : 0;
+        monitorSelect.selectedIndex = monIdx >= 0 ? monIdx : Math.min(1, imageStore.length - 1);
       }
 
       function escapeHtml(str) {
-        return str
+        return String(str)
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;")
@@ -1022,40 +1856,211 @@
 
       drawPlaceholder();
 
-      async function addFiles(files) {
-        const valid = Array.from(files).filter((f) => /image\/(jpeg|png)/.test(f.type));
-        for (const file of valid) {
-          const bitmap = await createImageBitmap(file);
-          imageStore.push({ file, bitmap });
+      // Images are decoded on demand and only a few stay in memory, so a folder of
+      // thousands of full-size photos does not exhaust the tab.
+      const bitmapLru = [];
+      async function getBitmap(item) {
+        if (!item.bitmap) {
+          item.bitmap = await createImageBitmap(item.file);
         }
-        updateFileUI();
+        const at = bitmapLru.indexOf(item);
+        if (at >= 0) bitmapLru.splice(at, 1);
+        bitmapLru.push(item);
+        while (bitmapLru.length > 4) {
+          const old = bitmapLru.shift();
+          if (old.bitmap) old.bitmap.close();
+          old.bitmap = null;
+        }
+        return item.bitmap;
       }
 
-      dropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
+      function releaseBitmaps() {
+        for (const item of bitmapLru) {
+          if (item.bitmap) item.bitmap.close();
+          item.bitmap = null;
+        }
+        bitmapLru.length = 0;
+      }
+
+      // ---------- Folder / file ingestion ----------
+
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+      const ingestStatus = document.getElementById("ingestStatus");
+      const ingestIssues = document.getElementById("ingestIssues");
+      const ingestIssuesSummary = document.getElementById("ingestIssuesSummary");
+      const ingestIssuesList = document.getElementById("ingestIssuesList");
+      const cancelIngestBtn = document.getElementById("cancelIngestBtn");
+      const folderInput = document.getElementById("folderInput");
+      const knownKeys = new Map();
+      let ingestStats = freshIngestStats();
+      let ingestCtl = new AbortController();
+      let ingestQueue = Promise.resolve();
+      let pendingIngests = 0;
+
+      function freshIngestStats() {
+        return { dirs: 0, added: 0, duplicates: 0, hidden: 0, empty: 0, other: {}, errors: [] };
+      }
+
+      function itemKey(file, path) {
+        return `${path}|${file.size}|${file.lastModified}`;
+      }
+
+      function describeIngest(prefix) {
+        const s = ingestStats;
+        const parts = [`${imageStore.length.toLocaleString()} images loaded`];
+        if (s.dirs) parts.push(`${s.dirs.toLocaleString()} folders scanned`);
+        if (s.duplicates) parts.push(`${s.duplicates.toLocaleString()} duplicates ignored`);
+        const otherCount = Object.values(s.other).reduce((a, b) => a + b, 0);
+        const skipped = s.hidden + s.empty + otherCount;
+        if (skipped) parts.push(`${skipped.toLocaleString()} files skipped`);
+        if (s.errors.length) parts.push(`${s.errors.length.toLocaleString()} unreadable`);
+        return `${prefix}${parts.join(", ")}.`;
+      }
+
+      function renderIngestIssues() {
+        const s = ingestStats;
+        const lines = [];
+        if (s.hidden) lines.push(`${s.hidden} hidden/system files (dot files, __MACOSX, @eaDir, ...)`);
+        if (s.empty) lines.push(`${s.empty} zero-byte image files (partial copy or cloud placeholder?)`);
+        for (const [ext, n] of Object.entries(s.other).sort((a, b) => b[1] - a[1])) {
+          const hint = [".csv", ".txt", ".tsv", ".dat"].includes(ext) ? " (swell data? use the Swell Cross-Reference panel)" : "";
+          lines.push(`${n} ${ext} file${n === 1 ? "" : "s"} not supported${hint}`);
+        }
+        for (const e of s.errors.slice(0, 50)) lines.push(`Could not read ${e}`);
+        if (s.errors.length > 50) lines.push(`... and ${s.errors.length - 50} more unreadable items`);
+        ingestIssues.hidden = !lines.length;
+        ingestIssuesSummary.textContent = `Skipped or unreadable items (${lines.length})`;
+        ingestIssuesList.innerHTML = lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("");
+      }
+
+      async function runIngest(roots, signal) {
+        let lastPaint = 0;
+        cancelIngestBtn.hidden = false;
+        const paint = (force) => {
+          const now = performance.now();
+          if (force || now - lastPaint > 150) {
+            lastPaint = now;
+            ingestStatus.textContent = describeIngest("Scanning... ");
+          }
+        };
+
+        await BFLib.walkRoots(roots, {
+          signal,
+          onDir: () => {
+            ingestStats.dirs += 1;
+            paint(false);
+          },
+          onFile: (file, path) => {
+            const key = itemKey(file, path);
+            if (knownKeys.has(key)) {
+              ingestStats.duplicates += 1;
+            } else if (imageStore.length >= MAX_IMAGES) {
+              if (!ingestStats.capped) ingestStats.errors.push(`(limit of ${MAX_IMAGES.toLocaleString()} images reached; remaining files ignored)`);
+              ingestStats.capped = true;
+            } else {
+              const item = { file, path, key, bitmap: null };
+              knownKeys.set(key, item);
+              imageStore.push(item);
+              ingestStats.added += 1;
+            }
+            paint(false);
+          },
+          onSkip: (kind) => {
+            if (kind === "hidden") ingestStats.hidden += 1;
+            else if (kind === "empty") ingestStats.empty += 1;
+            else ingestStats.other[kind] = (ingestStats.other[kind] || 0) + 1;
+          },
+          onError: (path, err) => {
+            ingestStats.errors.push(`${path || "(unknown)"}: ${err && err.message ? err.message : err}`);
+          }
+        });
+
+        imageStore.sort((a, b) => collator.compare(a.path, b.path));
+        updateFileUI();
+        renderIngestIssues();
+        ingestStatus.textContent = describeIngest(signal.aborted ? "Scan cancelled. " : "Done. ");
+      }
+
+      function queueIngest(roots) {
+        if (!roots.length) return;
+        pendingIngests += 1;
+        const ctl = ingestCtl;
+        ingestQueue = ingestQueue
+          .then(() => (ctl.signal.aborted ? null : runIngest(roots, ctl.signal)))
+          .catch((err) => {
+            ingestStats.errors.push(`scan failed: ${err && err.message ? err.message : err}`);
+            renderIngestIssues();
+            ingestStatus.textContent = describeIngest("Scan stopped by an error. ");
+          })
+          .finally(() => {
+            pendingIngests -= 1;
+            if (!pendingIngests) {
+              ingestCtl = new AbortController();
+              cancelIngestBtn.hidden = true;
+            }
+          });
+      }
+
+      cancelIngestBtn.addEventListener("click", () => ingestCtl.abort());
+
+      // Handle drops anywhere on the page so a slightly-off drop never navigates away from the app.
+      let dragDepth = 0;
+      const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
+      function endDrag() {
+        dragDepth = 0;
+        dropZone.classList.remove("dragover");
+        swellDropZone.classList.remove("dragover");
+      }
+
+      window.addEventListener("dragenter", (e) => {
+        if (!hasFiles(e)) return;
+        dragDepth += 1;
         dropZone.classList.add("dragover");
       });
-
-      dropZone.addEventListener("dragleave", () => {
-        dropZone.classList.remove("dragover");
-      });
-
-      dropZone.addEventListener("drop", async (e) => {
+      window.addEventListener("dragover", (e) => {
+        if (!hasFiles(e)) return;
         e.preventDefault();
-        dropZone.classList.remove("dragover");
-        await addFiles(e.dataTransfer.files);
+        e.dataTransfer.dropEffect = "copy";
+      });
+      window.addEventListener("dragleave", (e) => {
+        if (!hasFiles(e)) return;
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (!dragDepth) endDrag();
+      });
+      window.addEventListener("drop", (e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        const roots = BFLib.snapshotDrop(e.dataTransfer);
+        endDrag();
+        queueIngest(roots);
       });
 
-      fileInput.addEventListener("change", async () => {
-        await addFiles(fileInput.files);
+      document.getElementById("browseFilesBtn").addEventListener("click", () => fileInput.click());
+      document.getElementById("browseFolderBtn").addEventListener("click", () => folderInput.click());
+
+      fileInput.addEventListener("change", () => {
+        queueIngest(Array.from(fileInput.files).map((file) => ({ entry: null, file })));
         fileInput.value = "";
       });
 
+      folderInput.addEventListener("change", () => {
+        queueIngest(Array.from(folderInput.files).map((file) => ({ entry: null, file })));
+        folderInput.value = "";
+      });
+
       clearFilesBtn.addEventListener("click", () => {
+        ingestCtl.abort();
+        stopBulk();
+        releaseBitmaps();
         imageStore.splice(0, imageStore.length);
+        knownKeys.clear();
+        ingestStats = freshIngestStats();
+        ingestStatus.textContent = "";
+        ingestIssues.hidden = true;
         results.splice(0, results.length);
         updateResultsTable();
         updateFileUI();
+        renderBulkTable();
       });
 
       function getSelectedPair() {
@@ -1067,7 +2072,8 @@
       }
 
       function imageDataFromBitmap(bitmap, width, height) {
-        const c = document.createElement("canvas");
+        // Runs on the main thread (DOM canvas) and inside batch workers (OffscreenCanvas).
+        const c = typeof document !== "undefined" ? document.createElement("canvas") : new OffscreenCanvas(width, height);
         c.width = width;
         c.height = height;
         const ctx = c.getContext("2d", { willReadFrequently: true });
@@ -1075,10 +2081,10 @@
         return ctx.getImageData(0, 0, width, height);
       }
 
-      function chooseCommonSize(a, b) {
-        const maxDim = 512;
-        const w = Math.min(a.width, b ? b.width : a.width, maxDim);
-        const h = Math.min(a.height, b ? b.height : a.height, maxDim);
+      function chooseCommonSize(a, b, maxDim) {
+        const limit = maxDim || 512;
+        const w = Math.min(a.width, b ? b.width : a.width, limit);
+        const h = Math.min(a.height, b ? b.height : a.height, limit);
         return { width: Math.max(32, w), height: Math.max(32, h) };
       }
 
@@ -1465,12 +2471,22 @@
         }
 
         let value;
-        let refName = ref ? ref.file.name : "";
-        const monName = mon.file.name;
+        let refName = ref ? ref.path : "";
+        const monName = mon.path;
+
+        let monBitmap;
+        let refBitmap = null;
+        try {
+          monBitmap = await getBitmap(mon);
+          if (!monitorSelectionRequired(metric)) refBitmap = await getBitmap(ref);
+        } catch (err) {
+          alert(`Could not decode image: ${err.message}`);
+          return;
+        }
 
         if (monitorSelectionRequired(metric)) {
-          const size = chooseCommonSize(mon.bitmap, null);
-          const monData = imageDataFromBitmap(mon.bitmap, size.width, size.height);
+          const size = chooseCommonSize(monBitmap, null);
+          const monData = imageDataFromBitmap(monBitmap, size.width, size.height);
           const grayM = grayArray(monData);
 
           if (metric === "michelson") {
@@ -1486,9 +2502,9 @@
             value = computeLaplacianVariance(grayM, monData.width, monData.height);
           }
         } else {
-          const size = chooseCommonSize(ref.bitmap, mon.bitmap);
-          const refData = imageDataFromBitmap(ref.bitmap, size.width, size.height);
-          const monData = imageDataFromBitmap(mon.bitmap, size.width, size.height);
+          const size = chooseCommonSize(refBitmap, monBitmap);
+          const refData = imageDataFromBitmap(refBitmap, size.width, size.height);
+          const monData = imageDataFromBitmap(monBitmap, size.width, size.height);
           const grayR = grayArray(refData);
           const grayM = grayArray(monData);
 
@@ -1514,7 +2530,7 @@
           laplacian: "Laplacian Variance"
         };
 
-        drawOverlay(mon.bitmap, nameMap[metric], v, formulaText(metric));
+        drawOverlay(monBitmap, nameMap[metric], v, formulaText(metric));
         formulaNote.textContent = `${nameMap[metric]} formula: ${formulaText(metric)}`;
         addResult(nameMap[metric], refName, monName, v);
       }
@@ -1550,8 +2566,8 @@
       });
 
       exportFolderBtn.addEventListener("click", async () => {
-        if (!imageStore.length) {
-          alert("Upload images before exporting folders.");
+        if (!imageStore.length && !batchResults.size) {
+          alert("Load images or run a batch before exporting.");
           return;
         }
 
@@ -1561,45 +2577,56 @@
           return;
         }
 
+        if (imageStore.length > 200 && !confirm(`This copies ${imageStore.length.toLocaleString()} input images into the result folder. Continue?`)) {
+          return;
+        }
+
+        async function writeFile(dir, name, data) {
+          const handle = await dir.getFileHandle(name, { create: true });
+          const writable = await handle.createWritable();
+          await writable.write(data);
+          await writable.close();
+        }
+
         try {
           const root = await window.showDirectoryPicker({ mode: "readwrite" });
           const resultDir = await root.getDirectoryHandle("result", { create: true });
           const inputDir = await resultDir.getDirectoryHandle("input", { create: true });
           const outputDir = await resultDir.getDirectoryHandle("output", { create: true });
 
+          // Keep sub-folder structure so same-named files in different folders do not overwrite each other.
+          const failed = [];
+          let copied = 0;
           for (const img of imageStore) {
-            const fh = await inputDir.getFileHandle(img.file.name, { create: true });
-            const ws = await fh.createWritable();
-            await ws.write(img.file);
-            await ws.close();
+            try {
+              const parts = img.path.split("/").filter((p) => p && p !== "." && p !== "..");
+              let dir = inputDir;
+              for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
+              await writeFile(dir, parts[parts.length - 1], img.file);
+              copied += 1;
+              if (copied % 25 === 0) ingestStatus.textContent = `Exporting inputs: ${copied.toLocaleString()} of ${imageStore.length.toLocaleString()}...`;
+            } catch (err) {
+              failed.push(`${img.path}: ${err.message}`);
+            }
           }
 
-          const csvBlob = buildResultsCsvBlob();
-          const csvHandle = await outputDir.getFileHandle("results.csv", { create: true });
-          const csvWritable = await csvHandle.createWritable();
-          await csvWritable.write(csvBlob);
-          await csvWritable.close();
+          await writeFile(outputDir, "results.csv", buildResultsCsvBlob());
+          if (batchResults.size) await writeFile(outputDir, "batch_results.csv", buildBatchCsvBlob());
+          if (lastJoin) await writeFile(outputDir, "swell_merged.csv", buildMergedCsvBlob());
 
           const overlayBlob = await new Promise((resolve) => overlayCanvas.toBlob(resolve, "image/png"));
-          if (overlayBlob) {
-            const pngHandle = await outputDir.getFileHandle("annotated_overlay.png", { create: true });
-            const pngWritable = await pngHandle.createWritable();
-            await pngWritable.write(overlayBlob);
-            await pngWritable.close();
-          }
+          if (overlayBlob) await writeFile(outputDir, "annotated_overlay.png", overlayBlob);
 
-          alert("Export complete: result/input and result/output created in the selected location.");
+          ingestStatus.textContent = describeIngest("");
+          alert(`Export complete: ${copied} input files and the results were written to result/input and result/output.` +
+            (failed.length ? `\n${failed.length} files failed:\n${failed.slice(0, 10).join("\n")}` : ""));
         } catch (err) {
           alert(`Folder export cancelled or failed: ${err.message}`);
         }
       });
 
       function csvEscape(v) {
-        const s = String(v ?? "");
-        if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-          return `"${s.replace(/"/g, '""')}"`;
-        }
-        return s;
+        return BFLib.csvCell(v);
       }
 
       function buildResultsCsvBlob() {
@@ -1628,6 +2655,820 @@
         URL.revokeObjectURL(url);
       }
 
+      // ---------- Bulk analysis ----------
+
+      const NO_REF_METRICS = ["michelson", "intensity_std", "entropy", "laplacian"];
+      const FULL_REF_METRICS = ["ssim", "psnr", "deltae"];
+      const METRIC_ORDER = ["ssim", "psnr", "deltae", "michelson", "intensity_std", "entropy", "laplacian"];
+      const METRIC_LABELS = {
+        ssim: "SSIM",
+        psnr: "PSNR (dB)",
+        deltae: "Delta E 2000",
+        michelson: "Michelson",
+        intensity_std: "Intensity std",
+        entropy: "Entropy",
+        laplacian: "Laplacian var"
+      };
+      const FILE_TIMEOUT_MS = 120000;
+      const PAGE_SIZE = 100;
+
+      const bulkMetricBoxes = document.getElementById("bulkMetricBoxes");
+      const bulkMaxDim = document.getElementById("bulkMaxDim");
+      const bulkWorkers = document.getElementById("bulkWorkers");
+      const bulkRunBtn = document.getElementById("bulkRunBtn");
+      const bulkPauseBtn = document.getElementById("bulkPauseBtn");
+      const bulkCancelBtn = document.getElementById("bulkCancelBtn");
+      const bulkRetryBtn = document.getElementById("bulkRetryBtn");
+      const bulkExportBtn = document.getElementById("bulkExportBtn");
+      const bulkClearBtn = document.getElementById("bulkClearBtn");
+      const bulkProgress = document.getElementById("bulkProgress");
+      const bulkStatus = document.getElementById("bulkStatus");
+      const bulkIssues = document.getElementById("bulkIssues");
+      const bulkIssuesSummary = document.getElementById("bulkIssuesSummary");
+      const bulkIssuesList = document.getElementById("bulkIssuesList");
+      const bulkTableWrap = document.getElementById("bulkTableWrap");
+      const bulkPrevBtn = document.getElementById("bulkPrevBtn");
+      const bulkNextBtn = document.getElementById("bulkNextBtn");
+      const bulkPageLabel = document.getElementById("bulkPageLabel");
+
+      bulkWorkers.value = String(Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1)));
+
+      const batchResults = new Map();
+      const bulk = { running: false, paused: false, cancelled: false, runners: [] };
+      let sortedRecords = [];
+      let sortedVersion = -1;
+      let recordsVersion = 0;
+      let bulkPage = 0;
+
+      // Runs in the batch workers and, as a fallback, on the main thread. Kept free of DOM access.
+      async function analyzeImage(file, metrics, maxDim, refBitmap) {
+        const noRef = ["michelson", "intensity_std", "entropy", "laplacian"];
+        const fullRef = ["ssim", "psnr", "deltae"];
+        const bmp = await createImageBitmap(file);
+        try {
+          const out = { width: bmp.width, height: bmp.height, metrics: {}, exif: null };
+          if (metrics.some((m) => noRef.includes(m))) {
+            const size = chooseCommonSize(bmp, null, maxDim);
+            const data = imageDataFromBitmap(bmp, size.width, size.height);
+            const gray = grayArray(data);
+            if (metrics.includes("michelson")) out.metrics.michelson = computeMichelson(gray);
+            if (metrics.includes("intensity_std")) out.metrics.intensity_std = computeStd(gray);
+            if (metrics.includes("entropy")) out.metrics.entropy = computeEntropy(gray);
+            if (metrics.includes("laplacian")) out.metrics.laplacian = computeLaplacianVariance(gray, data.width, data.height);
+          }
+          if (metrics.some((m) => fullRef.includes(m))) {
+            if (!refBitmap) throw new Error("reference image is not available");
+            const size = chooseCommonSize(refBitmap, bmp, maxDim);
+            const refData = imageDataFromBitmap(refBitmap, size.width, size.height);
+            const monData = imageDataFromBitmap(bmp, size.width, size.height);
+            if (metrics.includes("ssim")) out.metrics.ssim = computeSSIM(grayArray(refData), grayArray(monData));
+            if (metrics.includes("psnr")) out.metrics.psnr = computePSNR(refData, monData);
+            if (metrics.includes("deltae")) out.metrics.deltae = computeDeltaE2000(refData, monData);
+          }
+          out.exif = await BFLib.readExif(file);
+          return out;
+        } finally {
+          bmp.close();
+        }
+      }
+
+      function workerMain() {
+        let refKey = null;
+        let refBitmap = null;
+        self.onmessage = async (e) => {
+          const m = e.data;
+          try {
+            if (m.ping) {
+              self.postMessage({ id: m.id, ok: true, result: { pong: true } });
+              return;
+            }
+            if (m.refKey !== refKey) {
+              if (refBitmap) refBitmap.close();
+              refBitmap = null;
+              refKey = null;
+              if (m.refFile) {
+                refBitmap = await createImageBitmap(m.refFile);
+                refKey = m.refKey;
+              }
+            }
+            const result = await analyzeImage(m.file, m.metrics, m.maxDim, refBitmap);
+            self.postMessage({ id: m.id, ok: true, result });
+          } catch (err) {
+            self.postMessage({ id: m.id, ok: false, error: String((err && err.message) || err) });
+          }
+        };
+      }
+
+      let workerUrl = null;
+      function getWorkerUrl() {
+        if (!workerUrl) {
+          // The worker is assembled from this page's own functions so the metric code exists exactly once
+          // and the app still works as a single file (including when opened from disk).
+          const shared = [
+            rgbToGray, grayArray, mean, variance, covariance, computeSSIM, computePSNR, srgbToLinear, rgbToLab,
+            deg2rad, rad2deg, ciede2000, computeDeltaE2000, computeMichelson, computeStd, computeEntropy,
+            computeLaplacianVariance, chooseCommonSize, imageDataFromBitmap, analyzeImage
+          ].map((fn) => fn.toString());
+          const source = [document.getElementById("bf-lib").textContent, ...shared, `(${workerMain.toString()})();`].join("\n");
+          workerUrl = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+        }
+        return workerUrl;
+      }
+
+      function createWorkerRunner() {
+        let worker = null;
+        let pending = null;
+        let seq = 0;
+
+        function settle(err, value) {
+          if (!pending) return;
+          const p = pending;
+          pending = null;
+          clearTimeout(p.timer);
+          if (err) p.reject(err);
+          else p.resolve(value);
+        }
+
+        function kill() {
+          if (worker) worker.terminate();
+          worker = null;
+        }
+
+        function spawn() {
+          worker = new Worker(getWorkerUrl());
+          worker.onmessage = (e) => {
+            if (!pending || e.data.id !== pending.id) return;
+            if (e.data.ok) settle(null, e.data.result);
+            else settle(new Error(e.data.error));
+          };
+          worker.onerror = (ev) => {
+            if (ev.preventDefault) ev.preventDefault();
+            kill();
+            settle(new Error(ev.message || "worker crashed"));
+          };
+        }
+
+        return {
+          run(msg, timeoutMs) {
+            return new Promise((resolve, reject) => {
+              try {
+                if (!worker) spawn();
+              } catch (err) {
+                reject(err);
+                return;
+              }
+              const id = ++seq;
+              const timer = setTimeout(() => {
+                kill();
+                settle(new Error("timed out"));
+              }, timeoutMs || FILE_TIMEOUT_MS);
+              pending = { id, resolve, reject, timer };
+              worker.postMessage({ ...msg, id });
+            });
+          },
+          cancel() {
+            kill();
+            settle(new Error("cancelled"));
+          },
+          dispose() {
+            kill();
+          }
+        };
+      }
+
+      function createInlineRunner() {
+        let refKey = null;
+        let refBitmap = null;
+        return {
+          async run(msg) {
+            if (msg.ping) return { pong: true };
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            if (msg.refKey !== refKey) {
+              if (refBitmap) refBitmap.close();
+              refBitmap = null;
+              refKey = null;
+              if (msg.refFile) {
+                refBitmap = await createImageBitmap(msg.refFile);
+                refKey = msg.refKey;
+              }
+            }
+            return analyzeImage(msg.file, msg.metrics, msg.maxDim, refBitmap);
+          },
+          cancel() {},
+          dispose() {
+            if (refBitmap) refBitmap.close();
+            refBitmap = null;
+          }
+        };
+      }
+
+      async function createRunners(count) {
+        if (typeof Worker === "function" && typeof OffscreenCanvas === "function") {
+          const runners = Array.from({ length: count }, createWorkerRunner);
+          try {
+            await runners[0].run({ ping: true }, 5000);
+            return { runners, mode: `${count} background worker${count === 1 ? "" : "s"}` };
+          } catch (err) {
+            runners.forEach((r) => r.dispose());
+          }
+        }
+        return { runners: [createInlineRunner()], mode: "main thread (workers unavailable)" };
+      }
+
+      // ---------- Persistence (IndexedDB) ----------
+
+      const store = (function () {
+        let dbPromise = null;
+        function open() {
+          if (!dbPromise) {
+            dbPromise = new Promise((resolve, reject) => {
+              if (!window.indexedDB) {
+                reject(new Error("IndexedDB unavailable"));
+                return;
+              }
+              const req = indexedDB.open("bf-analyzer", 1);
+              req.onupgradeneeded = () => req.result.createObjectStore("results", { keyPath: "key" });
+              req.onsuccess = () => resolve(req.result);
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => reject(new Error("database blocked by another tab"));
+            });
+          }
+          return dbPromise;
+        }
+        function tx(mode, fn) {
+          return open().then((db) => new Promise((resolve, reject) => {
+            const t = db.transaction("results", mode);
+            const result = fn(t.objectStore("results"));
+            t.oncomplete = () => resolve(result && result.result !== undefined ? result.result : undefined);
+            t.onerror = () => reject(t.error);
+            t.onabort = () => reject(t.error || new Error("transaction aborted"));
+          }));
+        }
+        return {
+          putMany: (records) => tx("readwrite", (s) => records.forEach((r) => s.put(r))),
+          getAll: () => tx("readonly", (s) => s.getAll()),
+          clear: () => tx("readwrite", (s) => s.clear())
+        };
+      })();
+
+      const dirtyKeys = new Set();
+      let flushTimer = null;
+      let persistWarned = false;
+
+      async function flushDirty() {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+        if (!dirtyKeys.size) return;
+        const records = Array.from(dirtyKeys).map((k) => batchResults.get(k)).filter(Boolean);
+        dirtyKeys.clear();
+        try {
+          await store.putMany(records);
+        } catch (err) {
+          records.forEach((r) => dirtyKeys.add(r.key));
+          if (!persistWarned) {
+            persistWarned = true;
+            bulkStatus.textContent += ` Warning: results could not be saved in this browser (${err.message}). Export the CSV to keep them.`;
+          }
+        }
+      }
+
+      function markDirty(rec) {
+        dirtyKeys.add(rec.key);
+        if (dirtyKeys.size >= 50) flushDirty();
+        else if (!flushTimer) flushTimer = setTimeout(flushDirty, 3000);
+      }
+
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+      // ---------- Batch records ----------
+
+      function getRecord(item) {
+        let rec = batchResults.get(item.key);
+        if (!rec) {
+          rec = {
+            key: item.key, path: item.path, size: item.file.size, lastModified: item.file.lastModified,
+            width: 0, height: 0, exif: null, maxDim: 0, refKey: "", metrics: {}, status: "pending", error: ""
+          };
+          batchResults.set(item.key, rec);
+          recordsVersion += 1;
+        }
+        return rec;
+      }
+
+      // Results are only reusable if they were produced with the same resolution and reference image.
+      function reconcileRecord(rec, maxDim, refKey) {
+        if (rec.maxDim && rec.maxDim !== maxDim) rec.metrics = {};
+        if (refKey && rec.refKey !== refKey) FULL_REF_METRICS.forEach((m) => delete rec.metrics[m]);
+        rec.maxDim = maxDim;
+        if (refKey) rec.refKey = refKey;
+      }
+
+      function getSortedRecords() {
+        if (sortedVersion !== recordsVersion) {
+          sortedRecords = Array.from(batchResults.values()).sort((a, b) => collator.compare(a.path, b.path));
+          sortedVersion = recordsVersion;
+        }
+        return sortedRecords;
+      }
+
+      function fmtMetric(v) {
+        return v === undefined ? "" : formatValue(v);
+      }
+
+      function fmtTime(t) {
+        return t ? `${new Date(t.t).toISOString().slice(0, 19)}Z` : "";
+      }
+
+      function renderBulkTable() {
+        const recs = getSortedRecords();
+        if (!recs.length) {
+          bulkTableWrap.innerHTML = '<p style="padding:10px;">No batch results yet.</p>';
+          bulkPageLabel.textContent = "";
+          bulkPrevBtn.disabled = true;
+          bulkNextBtn.disabled = true;
+          return;
+        }
+        const pages = Math.ceil(recs.length / PAGE_SIZE);
+        bulkPage = Math.max(0, Math.min(bulkPage, pages - 1));
+        const metricCols = METRIC_ORDER.filter((m) => recs.some((r) => r.metrics[m] !== undefined));
+        const slice = recs.slice(bulkPage * PAGE_SIZE, (bulkPage + 1) * PAGE_SIZE);
+        const body = slice.map((r) => {
+          const t = resolveImageTime(r);
+          const cells = metricCols.map((m) => `<td>${escapeHtml(fmtMetric(r.metrics[m]))}</td>`).join("");
+          const status = r.status === "error" ? `<td class="err">${escapeHtml(r.error || "failed")}</td>` : `<td>${escapeHtml(r.status)}</td>`;
+          return `<tr><td>${escapeHtml(r.path)}</td><td>${escapeHtml(t ? `${fmtTime(t)} (${t.src})` : "no timestamp")}</td>${status}${cells}</tr>`;
+        }).join("");
+        const head = metricCols.map((m) => `<th>${escapeHtml(METRIC_LABELS[m])}</th>`).join("");
+        bulkTableWrap.innerHTML = `<table><thead><tr><th>File</th><th>Captured (UTC)</th><th>Status</th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+        bulkPageLabel.textContent = `Page ${bulkPage + 1} of ${pages} (${recs.length.toLocaleString()} images)`;
+        bulkPrevBtn.disabled = bulkPage === 0;
+        bulkNextBtn.disabled = bulkPage >= pages - 1;
+      }
+
+      bulkPrevBtn.addEventListener("click", () => {
+        bulkPage -= 1;
+        renderBulkTable();
+      });
+      bulkNextBtn.addEventListener("click", () => {
+        bulkPage += 1;
+        renderBulkTable();
+      });
+
+      function renderBulkIssues() {
+        const failed = Array.from(batchResults.values()).filter((r) => r.status === "error");
+        bulkIssues.hidden = !failed.length;
+        bulkIssuesSummary.textContent = `Failed images (${failed.length})`;
+        bulkIssuesList.innerHTML = failed.slice(0, 100).map((r) => `<li>${escapeHtml(r.path)}: ${escapeHtml(r.error)}</li>`).join("") +
+          (failed.length > 100 ? `<li>... and ${failed.length - 100} more (see the status column or CSV)</li>` : "");
+        bulkRetryBtn.disabled = bulk.running || !failed.length;
+      }
+
+      function setBulkButtons() {
+        bulkRunBtn.disabled = bulk.running;
+        bulkPauseBtn.disabled = !bulk.running;
+        bulkCancelBtn.disabled = !bulk.running;
+        bulkClearBtn.disabled = bulk.running;
+        bulkPauseBtn.textContent = bulk.paused ? "Resume" : "Pause";
+      }
+
+      function stopBulk() {
+        bulk.cancelled = true;
+        bulk.paused = false;
+        bulk.runners.forEach((r) => r.cancel());
+      }
+
+      let wakeLock = null;
+      async function acquireWakeLock() {
+        try {
+          if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen");
+        } catch (err) {
+          wakeLock = null;
+        }
+      }
+      function releaseWakeLock() {
+        if (wakeLock) wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+      document.addEventListener("visibilitychange", () => {
+        if (bulk.running && document.visibilityState === "visible") acquireWakeLock();
+      });
+
+      window.addEventListener("beforeunload", (e) => {
+        if (bulk.running || pendingIngests) {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      });
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      async function runBulk(onlyFailed) {
+        if (bulk.running) return;
+        if (!imageStore.length) {
+          bulkStatus.textContent = "Load images first (drop a folder above).";
+          return;
+        }
+        const metrics = Array.from(bulkMetricBoxes.querySelectorAll("input:checked")).map((i) => i.value);
+        if (!metrics.length) {
+          bulkStatus.textContent = "Select at least one metric.";
+          return;
+        }
+        const maxDim = Number(bulkMaxDim.value) || 512;
+        const needsRef = metrics.some((m) => FULL_REF_METRICS.includes(m));
+        const refItem = needsRef ? imageStore[Number(referenceSelect.value)] : null;
+        if (needsRef && !refItem) {
+          bulkStatus.textContent = "Select a reference image for the full-reference metrics.";
+          return;
+        }
+        const refKey = needsRef ? refItem.key : "";
+
+        const jobs = [];
+        let alreadyDone = 0;
+        for (const item of imageStore) {
+          const rec = getRecord(item);
+          reconcileRecord(rec, maxDim, refKey);
+          const need = metrics.filter((m) => rec.metrics[m] === undefined);
+          if (onlyFailed ? rec.status === "error" : need.length) jobs.push({ item, rec, need: need.length ? need : metrics });
+          else alreadyDone += 1;
+        }
+        if (!jobs.length) {
+          bulkStatus.textContent = `Nothing to do: all ${alreadyDone.toLocaleString()} images already have the selected metrics.`;
+          renderBulkTable();
+          return;
+        }
+
+        bulk.running = true;
+        bulk.cancelled = false;
+        bulk.paused = false;
+        setBulkButtons();
+        bulkRetryBtn.disabled = true;
+        acquireWakeLock();
+
+        const total = jobs.length;
+        const queue = jobs.slice();
+        const refFile = refItem ? refItem.file : null;
+        const started = performance.now();
+        let done = 0;
+        let failed = 0;
+        let lastPaint = 0;
+        let modeLabel = "";
+
+        function paint(force) {
+          const now = performance.now();
+          if (!force && now - lastPaint < 250) return;
+          lastPaint = now;
+          const elapsed = (now - started) / 1000;
+          const eta = done ? (elapsed / done) * (total - done) : NaN;
+          bulkProgress.max = total;
+          bulkProgress.value = done;
+          bulkStatus.textContent =
+            `${bulk.paused ? "Paused. " : ""}Analysing ${done.toLocaleString()} of ${total.toLocaleString()} (${Math.round((done / total) * 100)}%)` +
+            `${failed ? `, ${failed.toLocaleString()} failed` : ""}` +
+            `${alreadyDone ? `, ${alreadyDone.toLocaleString()} already done` : ""}` +
+            ` using ${modeLabel}` +
+            `${Number.isFinite(eta) ? `, about ${eta < 90 ? Math.round(eta) + " s" : Math.round(eta / 60) + " min"} left` : ""}.`;
+          renderBulkTable();
+        }
+
+        async function processJob(runner, job) {
+          let lastErr = null;
+          for (let attempt = 0; attempt < 2 && !bulk.cancelled; attempt += 1) {
+            try {
+              const result = await runner.run({ file: job.item.file, metrics: job.need, maxDim, refFile, refKey });
+              Object.assign(job.rec.metrics, result.metrics);
+              job.rec.width = result.width;
+              job.rec.height = result.height;
+              job.rec.exif = result.exif || job.rec.exif;
+              job.rec.status = "ok";
+              job.rec.error = "";
+              markDirty(job.rec);
+              done += 1;
+              return;
+            } catch (err) {
+              lastErr = err;
+            }
+          }
+          if (bulk.cancelled) return;
+          job.rec.status = "error";
+          job.rec.error = lastErr && lastErr.message ? lastErr.message : "analysis failed";
+          markDirty(job.rec);
+          done += 1;
+          failed += 1;
+        }
+
+        async function lane(runner) {
+          while (!bulk.cancelled) {
+            while (bulk.paused && !bulk.cancelled) {
+              paint(true);
+              await sleep(250);
+            }
+            const job = queue.shift();
+            if (!job) break;
+            await processJob(runner, job);
+            paint(false);
+          }
+        }
+
+        try {
+          const requested = Math.max(1, Math.min(8, Math.floor(Number(bulkWorkers.value)) || 1));
+          const { runners, mode } = await createRunners(requested);
+          modeLabel = mode;
+          bulk.runners = runners;
+          if (bulk.cancelled) runners.forEach((r) => r.cancel());
+          await Promise.all(runners.map(lane));
+          runners.forEach((r) => r.dispose());
+        } catch (err) {
+          bulkStatus.textContent = `Batch stopped by an error: ${err.message}`;
+        } finally {
+          bulk.runners = [];
+          releaseWakeLock();
+          await flushDirty();
+          const wasCancelled = bulk.cancelled;
+          bulk.running = false;
+          bulk.paused = false;
+          setBulkButtons();
+          bulkProgress.max = total;
+          bulkProgress.value = done;
+          const secs = Math.round((performance.now() - started) / 1000);
+          bulkStatus.textContent = `${wasCancelled ? "Cancelled" : "Finished"}: ${done.toLocaleString()} of ${total.toLocaleString()} processed in ${secs} s` +
+            `${failed ? `, ${failed.toLocaleString()} failed (use Retry failed)` : ""}` +
+            `${alreadyDone ? `, ${alreadyDone.toLocaleString()} skipped as already analysed` : ""}.` +
+            `${wasCancelled && done < total ? " Drop the folder again and run to continue where you left off." : ""}`;
+          renderBulkTable();
+          renderBulkIssues();
+        }
+      }
+
+      bulkRunBtn.addEventListener("click", () => runBulk(false));
+      bulkRetryBtn.addEventListener("click", () => runBulk(true));
+      bulkPauseBtn.addEventListener("click", () => {
+        bulk.paused = !bulk.paused;
+        setBulkButtons();
+      });
+      bulkCancelBtn.addEventListener("click", stopBulk);
+
+      bulkClearBtn.addEventListener("click", async () => {
+        if (!batchResults.size || !confirm("Delete all stored batch results from this browser?")) return;
+        batchResults.clear();
+        dirtyKeys.clear();
+        recordsVersion += 1;
+        try {
+          await store.clear();
+        } catch (err) {
+          bulkStatus.textContent = `Could not clear stored results: ${err.message}`;
+        }
+        bulkProgress.value = 0;
+        bulkStatus.textContent = "Stored results cleared.";
+        renderBulkTable();
+        renderBulkIssues();
+      });
+
+      function buildBatchCsvBlob() {
+        const metricCols = METRIC_ORDER.filter((m) => getSortedRecords().some((r) => r.metrics[m] !== undefined));
+        const header = ["path", "size_bytes", "width", "height", "status", "error", "captured_utc", "time_source", ...metricCols];
+        const rows = getSortedRecords().map((r) => {
+          const t = resolveImageTime(r);
+          return [r.path, r.size, r.width, r.height, r.status, r.error, fmtTime(t), t ? t.src : "", ...metricCols.map((m) => r.metrics[m])];
+        });
+        return new Blob([BFLib.toCsv(header, rows)], { type: "text/csv" });
+      }
+
+      bulkExportBtn.addEventListener("click", () => {
+        if (!batchResults.size) {
+          alert("No batch results to export.");
+          return;
+        }
+        downloadBlob(buildBatchCsvBlob(), "biofouling_batch_results.csv");
+      });
+
+      // ---------- Image timestamps ----------
+
+      const timeSourceSelect = document.getElementById("timeSource");
+      const cameraOffsetInput = document.getElementById("cameraOffset");
+      const swellOffsetInput = document.getElementById("swellOffset");
+      const toleranceInput = document.getElementById("tolerance");
+
+      function numberOr(input, fallback) {
+        const v = Number(input.value);
+        return input.value.trim() !== "" && Number.isFinite(v) ? v : fallback;
+      }
+
+      // Returns { t: UTC ms, src } or null.
+      function resolveImageTime(rec) {
+        const mode = timeSourceSelect.value;
+        const camMs = numberOr(cameraOffsetInput, -10) * 3600000;
+        const fromExif = () => (rec.exif ? { t: rec.exif.naiveMs - (rec.exif.offsetMin != null ? rec.exif.offsetMin * 60000 : camMs), src: "EXIF" } : null);
+        const fromName = () => {
+          const f = BFLib.parseFilenameTime(rec.path);
+          if (!f) return null;
+          return { t: f.absolute ? f.ms : f.naiveMs - camMs, src: "file name" };
+        };
+        const fromModified = () => (rec.lastModified ? { t: rec.lastModified, src: "file modified" } : null);
+        if (mode === "exif") return fromExif();
+        if (mode === "filename") return fromName();
+        if (mode === "modified") return fromModified();
+        return fromExif() || fromName() || fromModified();
+      }
+
+      // ---------- Swell cross-reference ----------
+
+      const swellInput = document.getElementById("swellInput");
+      const swellInfo = document.getElementById("swellInfo");
+      const swellVarBoxes = document.getElementById("swellVarBoxes");
+      const swellRunBtn = document.getElementById("swellRunBtn");
+      const swellExportBtn = document.getElementById("swellExportBtn");
+      const swellSummary = document.getElementById("swellSummary");
+      const corrWrap = document.getElementById("corrWrap");
+      const joinWrap = document.getElementById("joinWrap");
+      const DEFAULT_SWELL_VARS = /^(WVHT|DPD|APD|MWD|SwH|SwP|SwD|WWH|WWP|WWD|waveHs|waveTp|waveTa|waveDp|Hs|Tp|Ta|Dp|Hm0|Tm\d*)$/i;
+      const swell = { merged: null, names: [], problems: [] };
+      let lastJoin = null;
+
+      function renderSwellInfo() {
+        if (!swell.merged) {
+          swellInfo.textContent = swell.problems.length ? `Could not read swell data: ${swell.problems.join("; ")}` : "No swell data loaded.";
+          return;
+        }
+        const rows = BFLib.resolveSwell(swell.merged, numberOr(swellOffsetInput, 0));
+        const span = `${fmtTime({ t: rows[0].t })} to ${fmtTime({ t: rows[rows.length - 1].t })}`;
+        swellInfo.textContent =
+          `Loaded ${swell.merged.rows.length.toLocaleString()} rows from ${swell.names.join(", ")} (${span}), ${swell.merged.columns.length} numeric columns` +
+          `${swell.merged.skipped ? `, ${swell.merged.skipped} non-data rows skipped` : ""}.` +
+          `${swell.problems.length ? ` Problems: ${swell.problems.join("; ")}` : ""}`;
+      }
+
+      function renderSwellVars() {
+        const cols = swell.merged.columns;
+        let defaults = cols.filter((c) => DEFAULT_SWELL_VARS.test(c));
+        if (!defaults.length) defaults = cols.slice(0, 4);
+        swellVarBoxes.innerHTML = "<legend>Swell variables</legend>" + cols
+          .map((c) => `<label><input type="checkbox" value="${escapeHtml(c)}"${defaults.includes(c) ? " checked" : ""} /> ${escapeHtml(c)}${BFLib.isDirectionName(c) ? " (direction)" : ""}</label>`)
+          .join("");
+      }
+
+      async function loadSwellFiles(files) {
+        const parsed = [];
+        const problems = [];
+        for (const file of files) {
+          if (file.size > 100 * 1048576) {
+            problems.push(`${file.name}: larger than 100 MB`);
+            continue;
+          }
+          try {
+            parsed.push(BFLib.parseSwellText(await file.text(), file.name));
+          } catch (err) {
+            problems.push(`${file.name}: ${err.message}`);
+          }
+        }
+        swell.problems = problems;
+        if (!parsed.length) {
+          renderSwellInfo();
+          return;
+        }
+        swell.merged = BFLib.mergeSwell(parsed);
+        swell.names = parsed.map((p) => p.label);
+        lastJoin = null;
+        swellExportBtn.disabled = true;
+        renderSwellVars();
+        renderSwellInfo();
+      }
+
+      document.getElementById("swellBrowseBtn").addEventListener("click", () => swellInput.click());
+      swellInput.addEventListener("change", async () => {
+        await loadSwellFiles(Array.from(swellInput.files));
+        swellInput.value = "";
+      });
+      swellDropZone.addEventListener("dragenter", () => swellDropZone.classList.add("dragover"));
+      swellDropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "copy";
+      });
+      swellDropZone.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const files = Array.from(e.dataTransfer.files);
+        endDrag();
+        await loadSwellFiles(files);
+      });
+      swellOffsetInput.addEventListener("change", () => swell.merged && renderSwellInfo());
+      [timeSourceSelect, cameraOffsetInput].forEach((el) => el.addEventListener("change", renderBulkTable));
+
+      function fmtStat(v) {
+        return Number.isFinite(v) ? v.toFixed(2) : "n/a";
+      }
+
+      function runCrossRef() {
+        if (!swell.merged) {
+          swellSummary.textContent = "Load swell data first.";
+          return;
+        }
+        const recs = getSortedRecords().filter((r) => r.status === "ok" && Object.keys(r.metrics).length);
+        if (!recs.length) {
+          swellSummary.textContent = "Run a bulk analysis first so there are optical metrics to compare.";
+          return;
+        }
+        const vars = Array.from(swellVarBoxes.querySelectorAll("input:checked")).map((i) => i.value);
+        if (!vars.length) {
+          swellSummary.textContent = "Select at least one swell variable.";
+          return;
+        }
+
+        const tolMs = Math.max(1, numberOr(toleranceInput, 30)) * 60000;
+        const swellRows = BFLib.resolveSwell(swell.merged, numberOr(swellOffsetInput, 0));
+        const times = recs.map(resolveImageTime);
+        const joins = BFLib.nearestJoin(times.map((t) => (t ? t.t : null)), swellRows, tolMs);
+        const varIdx = vars.map((v) => swell.merged.columns.indexOf(v));
+        const rows = recs.map((rec, i) => ({ rec, time: times[i], join: joins[i] }));
+        const matched = rows.filter((r) => r.join);
+        const noTime = rows.filter((r) => !r.time).length;
+
+        const metricCols = METRIC_ORDER.filter((m) => matched.some((r) => Number.isFinite(r.rec.metrics[m])));
+        const t0 = matched.length ? Math.min(...matched.map((r) => r.time.t)) : 0;
+        const corr = metricCols.map((m) => vars.map((v, vi) => {
+          const x = [];
+          const y = [];
+          const tt = [];
+          for (const r of matched) {
+            const mv = r.rec.metrics[m];
+            const sv = swellRows[r.join.idx].v[varIdx[vi]];
+            if (Number.isFinite(mv) && Number.isFinite(sv)) {
+              x.push(mv);
+              y.push(sv);
+              tt.push((r.time.t - t0) / 86400000);
+            }
+          }
+          const xs = Float64Array.from(x);
+          const ys = Float64Array.from(y);
+          const ts = Float64Array.from(tt);
+          return BFLib.isDirectionName(v) ? BFLib.circularLinear(xs, ys, ts) : BFLib.spearman(xs, ys, ts);
+        }));
+
+        lastJoin = { rows, matched, vars, varIdx, swellRows, metricCols };
+        swellExportBtn.disabled = !matched.length;
+        swellSummary.textContent =
+          `${matched.length.toLocaleString()} of ${rows.length.toLocaleString()} images matched to a swell record within ${Math.round(tolMs / 60000)} min` +
+          `${noTime ? `; ${noTime} had no usable timestamp` : ""}` +
+          `${rows.length - matched.length - noTime ? `; ${rows.length - matched.length - noTime} fell outside the swell data or the time gap` : ""}.`;
+
+        if (!matched.length) {
+          corrWrap.innerHTML = '<p style="padding:10px;">No images matched. Check the camera and swell UTC offsets, the time source and the maximum time gap.</p>';
+          joinWrap.innerHTML = "";
+          return;
+        }
+
+        const head = vars.map((v) => `<th>${escapeHtml(v)}</th>`).join("");
+        const body = metricCols.map((m, mi) => {
+          const cells = corr[mi].map((c, vi) => {
+            const strength = Number.isFinite(c.detrended) ? Math.min(1, Math.abs(c.detrended)) : 0;
+            const label = BFLib.isDirectionName(vars[vi]) ? "R" : "rho";
+            return `<td class="corr-cell" style="background:rgba(13,122,82,${(strength * 0.4).toFixed(2)})">${label} ${fmtStat(c.rho)}<small>detrended ${fmtStat(c.detrended)} (n=${c.n})</small></td>`;
+          }).join("");
+          return `<tr><th scope="row">${escapeHtml(METRIC_LABELS[m])}</th>${cells}</tr>`;
+        }).join("");
+        corrWrap.innerHTML = `<table><thead><tr><th>Metric</th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+
+        const mHead = metricCols.map((m) => `<th>${escapeHtml(METRIC_LABELS[m])}</th>`).join("");
+        const jBody = rows.slice(0, 50).map((r) => {
+          const sv = r.join ? vars.map((v, vi) => `<td>${fmtMetric(swellRows[r.join.idx].v[varIdx[vi]])}</td>`).join("") : vars.map(() => "<td></td>").join("");
+          const mv = metricCols.map((m) => `<td>${escapeHtml(fmtMetric(r.rec.metrics[m]))}</td>`).join("");
+          return `<tr><td>${escapeHtml(r.rec.path)}</td><td>${escapeHtml(fmtTime(r.time))}</td><td>${r.join ? (r.join.dtMs / 60000).toFixed(1) : ""}</td>${mv}${sv}</tr>`;
+        }).join("");
+        joinWrap.innerHTML = `<table><thead><tr><th>File</th><th>Captured (UTC)</th><th>Gap (min)</th>${mHead}${vars.map((v) => `<th>${escapeHtml(v)}</th>`).join("")}</tr></thead><tbody>${jBody}</tbody></table>`;
+      }
+
+      function buildMergedCsvBlob() {
+        const { rows, vars, varIdx, swellRows, metricCols } = lastJoin;
+        const header = ["path", "captured_utc", "time_source", "swell_time_utc", "gap_min", ...metricCols, ...vars.map((v) => `swell_${v}`)];
+        const data = rows.map((r) => [
+          r.rec.path,
+          fmtTime(r.time),
+          r.time ? r.time.src : "",
+          r.join ? fmtTime({ t: swellRows[r.join.idx].t }) : "",
+          r.join ? Number((r.join.dtMs / 60000).toFixed(2)) : "",
+          ...metricCols.map((m) => r.rec.metrics[m]),
+          ...varIdx.map((vi) => (r.join ? swellRows[r.join.idx].v[vi] : ""))
+        ]);
+        return new Blob([BFLib.toCsv(header, data)], { type: "text/csv" });
+      }
+
+      swellRunBtn.addEventListener("click", runCrossRef);
+      swellExportBtn.addEventListener("click", () => {
+        if (lastJoin) downloadBlob(buildMergedCsvBlob(), "biofouling_swell_merged.csv");
+      });
+
+      // Restore results from a previous session (e.g. after a crash or reload).
+      store.getAll().then((records) => {
+        for (const rec of records || []) batchResults.set(rec.key, rec);
+        if (batchResults.size) {
+          recordsVersion += 1;
+          bulkStatus.textContent = `Restored ${batchResults.size.toLocaleString()} analysed images from this browser's previous session. Drop the same folder and run again to process only what is missing.`;
+          renderBulkTable();
+          renderBulkIssues();
+        }
+      }).catch(() => {});
+
+      renderBulkTable();
       updateResultsTable();
     })();
   </script>
