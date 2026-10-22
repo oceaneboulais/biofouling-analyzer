@@ -985,7 +985,7 @@
         </fieldset>
 
         <div class="field-row">
-          <label for="bulkMaxDim">Analysis size (max px per side)
+          <label for="bulkMaxDim">Analysis size (long edge, px)
             <select id="bulkMaxDim">
               <option value="512" selected>512 (same as single-image mode)</option>
               <option value="1024">1024</option>
@@ -996,6 +996,12 @@
             <input id="bulkWorkers" type="number" min="1" max="8" step="1" value="2" />
           </label>
         </div>
+
+        <p class="note-small">
+          Images are scaled down (never cropped, never upscaled) so the long edge fits the chosen size, keeping the aspect ratio.
+          For full-reference metrics the monitoring image is resampled to the reference image's shape.
+          Keep one size for a whole study: sharpness metrics such as Laplacian variance depend on resolution.
+        </p>
 
         <div class="btn-row">
           <button class="btn btn-primary" id="bulkRunBtn" type="button">Analyse all loaded images</button>
@@ -2081,11 +2087,14 @@ const BFLib = (function () {
         return ctx.getImageData(0, 0, width, height);
       }
 
+      // Scales the long edge of `a` down to maxDim, keeping its aspect ratio and never upscaling.
+      // With a second image `b` (full-reference metrics) the size is also capped by b's native size,
+      // and b is resampled to a's aspect ratio so both images stay pixel-aligned.
       function chooseCommonSize(a, b, maxDim) {
         const limit = maxDim || 512;
-        const w = Math.min(a.width, b ? b.width : a.width, limit);
-        const h = Math.min(a.height, b ? b.height : a.height, limit);
-        return { width: Math.max(32, w), height: Math.max(32, h) };
+        let scale = Math.min(1, limit / Math.max(a.width, a.height));
+        if (b) scale = Math.min(scale, b.width / a.width, b.height / a.height);
+        return { width: Math.max(32, Math.round(a.width * scale)), height: Math.max(32, Math.round(a.height * scale)) };
       }
 
       function rgbToGray(r, g, b) {
@@ -2669,6 +2678,7 @@ const BFLib = (function () {
         entropy: "Entropy",
         laplacian: "Laplacian var"
       };
+      const SIZING_VERSION = 2;
       const FILE_TIMEOUT_MS = 120000;
       const PAGE_SIZE = 100;
 
@@ -2956,10 +2966,12 @@ const BFLib = (function () {
       }
 
       // Results are only reusable if they were produced with the same resolution and reference image.
+      // SIZING_VERSION also invalidates results saved before images were resized with their aspect ratio kept.
       function reconcileRecord(rec, maxDim, refKey) {
-        if (rec.maxDim && rec.maxDim !== maxDim) rec.metrics = {};
+        if ((rec.maxDim && rec.maxDim !== maxDim) || rec.sizing !== SIZING_VERSION) rec.metrics = {};
         if (refKey && rec.refKey !== refKey) FULL_REF_METRICS.forEach((m) => delete rec.metrics[m]);
         rec.maxDim = maxDim;
+        rec.sizing = SIZING_VERSION;
         if (refKey) rec.refKey = refKey;
       }
 
