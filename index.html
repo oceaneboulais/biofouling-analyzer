@@ -704,6 +704,120 @@
       color: #4a665d;
     }
 
+    .tab-bar {
+      margin: 14px auto 0;
+    }
+
+    .tab-list {
+      display: flex;
+      gap: 6px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    .tab-btn {
+      border: 1px solid var(--line);
+      border-bottom: none;
+      background: #fff;
+      color: #1a3d31;
+      border-radius: 10px 10px 0 0;
+      padding: 9px 20px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab-btn[aria-selected="true"] {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    #analyzer-view[hidden],
+    #methods-view[hidden] {
+      display: none !important;
+    }
+
+    .methods-doc {
+      margin-top: 14px;
+    }
+
+    .methods-doc > * {
+      max-width: 100ch;
+    }
+
+    .methods-doc > .table-wrapper {
+      max-width: none;
+    }
+
+    .methods-doc h3 {
+      margin-top: 26px;
+      scroll-margin-top: 12px;
+    }
+
+    .methods-doc h4 {
+      margin: 16px 0 4px;
+      font-size: 1rem;
+      color: #153a2d;
+    }
+
+    .methods-doc p,
+    .methods-doc li {
+      margin: 8px 0;
+      font-size: 0.97rem;
+    }
+
+    .methods-doc ul,
+    .methods-doc ol {
+      padding-left: 1.3rem;
+      margin: 6px 0;
+    }
+
+    .methods-doc .formula {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      background: #f2faf6;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 10px 0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    .methods-doc table.metric-table {
+      min-width: 0;
+    }
+
+    .methods-doc table.metric-table td,
+    .methods-doc table.metric-table th {
+      font-size: 0.9rem;
+    }
+
+    .methods-toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.92rem;
+    }
+
+    .methods-toc li {
+      margin: 0;
+    }
+
+    .paste-block {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      background: #f6fafd;
+      padding: 10px 14px;
+      font-size: 0.93rem;
+      white-space: pre-wrap;
+      margin: 10px 0 6px;
+    }
+
     .site-footer {
       margin: 20px auto 0;
       width: min(1160px, 92vw);
@@ -796,10 +910,19 @@
       <a class="chip-link" href="#analysis-workbench">Run calculations</a>
       <a class="chip-link" href="#before-deployment">Before deployment metrics</a>
       <a class="chip-link" href="#after-experiment">After experiment metrics</a>
+      <a class="chip-link" href="#methods">Methods</a>
     </div>
   </header>
 
+  <nav class="site-shell tab-bar" aria-label="Page sections">
+    <div class="tab-list" role="tablist" aria-label="Analyzer or methods">
+      <button class="tab-btn" id="tab-analyzer" role="tab" type="button" aria-selected="true" aria-controls="analyzer-view">Analyzer</button>
+      <button class="tab-btn" id="tab-methods" role="tab" type="button" aria-selected="false" aria-controls="methods-view" tabindex="-1">Methods</button>
+    </div>
+  </nav>
+
   <main id="main-content" class="site-shell" tabindex="-1">
+    <div id="analyzer-view" role="tabpanel" aria-labelledby="tab-analyzer">
     <section class="grid" aria-label="Overview and instructions">
       <article class="panel intro">
         <h2>What This Tool Does</h2>
@@ -1207,6 +1330,246 @@
       <p class="legend">
         Interpretation note: higher BRISQUE/NIQE-lite and lower contrast/entropy/sharpness jointly indicate increasing optical degradation.
       </p>
+    </section>
+    </div>
+
+    <section class="panel" id="methods-view" role="tabpanel" aria-labelledby="tab-methods" hidden>
+      <article class="methods-doc" aria-labelledby="methods-title">
+        <h2 id="methods-title">Methods</h2>
+        <p>
+          This page documents exactly how every number produced by this tool is computed, so that results can be reported, reproduced and critically assessed.
+          All processing happens locally in the browser; no image or swell data is uploaded.
+          Where a choice was made for practical reasons rather than validated against ground truth, the text says so.
+        </p>
+        <ul class="methods-toc" aria-label="Methods contents">
+          <li><a href="#m-decoding">1. Decoding and colour</a></li>
+          <li><a href="#m-sizing">2. Image size</a></li>
+          <li><a href="#m-gray">3. Grayscale conversion</a></li>
+          <li><a href="#m-metrics">4. Metric definitions</a></li>
+          <li><a href="#m-batch">5. Batch procedure</a></li>
+          <li><a href="#m-swell">6. Timestamps and swell</a></li>
+          <li><a href="#m-limits">7. Limitations</a></li>
+          <li><a href="#m-repro">8. Reproducibility and reporting</a></li>
+          <li><a href="#m-refs">9. References</a></li>
+        </ul>
+
+        <h3 id="m-decoding">1. Image decoding and colour handling</h3>
+        <p>
+          JPEG and PNG files are decoded by the browser and drawn onto a 2D canvas, and the 8-bit red, green and blue values are read back from the canvas.
+          These values are treated as sRGB (IEC 61966-2-1). The tool applies no white balance, exposure, lens or vignetting correction, and it does not interpret ICC profiles itself;
+          if the browser colour-manages an embedded profile while decoding, the converted values are what is analysed.
+          The alpha channel is ignored, so transparent PNG pixels are not treated specially.
+          EXIF orientation follows the browser's default decoding behaviour; confirm that all images in a study are oriented consistently.
+        </p>
+        <p>
+          Because decoding and resampling are performed by the browser, use the same browser and version for a whole study and report it.
+        </p>
+
+        <h3 id="m-sizing">2. Image size normalisation</h3>
+        <h4>Why images are resized</h4>
+        <ul>
+          <li>Full-reference metrics (SSIM, PSNR, Delta E) compare two images pixel by pixel, so both need the same pixel grid.</li>
+          <li>Sharpness-type measures depend on resolution. Downscaling removes fine detail, so Laplacian variance falls as the analysis size shrinks. Every image in a comparison must therefore be analysed at the same size.</li>
+          <li>Scaling down also averages away part of the sensor noise and JPEG block artefacts, and it keeps run time and memory manageable for folders of thousands of photos.</li>
+        </ul>
+        <h4>Rule used</h4>
+        <p>
+          Let an image have width W and height H pixels, and let L be the chosen analysis size (512 by default; 1024 and 2048 are selectable).
+          The image is scaled uniformly so that its long edge is at most L:
+        </p>
+        <div class="formula">s = min(1, L / max(W, H))
+width = max(32, round(s * W))     height = max(32, round(s * H))</div>
+        <ul>
+          <li>The aspect ratio is preserved. Nothing is cropped, so the whole frame is analysed.</li>
+          <li>Images are never upscaled: an image already smaller than L keeps its native size.</li>
+          <li>The 32 pixel floor only matters for extreme aspect ratios.</li>
+          <li>
+            Full-reference metrics: the reference image (width Wr, height Hr) sets the grid, and the scale is also capped by the monitoring image's native size (Wm, Hm):
+            <div class="formula">s = min(1, L / max(Wr, Hr), Wm / Wr, Hm / Hr)</div>
+            Both images are then drawn into the same width x height grid. If the monitoring image has a different aspect ratio from the reference it is stretched to the reference shape, so use the same camera and framing for full-reference metrics.
+          </li>
+          <li>Single-image mode and bulk mode use the same sizing code, so they return identical values for the same image and settings.</li>
+        </ul>
+        <div class="table-wrapper" role="region" aria-label="Worked sizing examples" tabindex="0">
+          <table class="metric-table">
+            <caption>Worked examples at L = 512</caption>
+            <thead>
+              <tr><th scope="col">Native size (W x H)</th><th scope="col">Case</th><th scope="col">Analysed size</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>4000 x 3000</td><td>No-reference metric</td><td>512 x 384</td></tr>
+              <tr><td>3000 x 4000 (portrait)</td><td>No-reference metric</td><td>384 x 512</td></tr>
+              <tr><td>1920 x 1080</td><td>No-reference metric</td><td>512 x 288</td></tr>
+              <tr><td>300 x 200</td><td>No-reference metric (not upscaled)</td><td>300 x 200</td></tr>
+              <tr><td>Reference 1920 x 1080, monitoring 1280 x 720</td><td>Full-reference metric</td><td>512 x 288 (both images)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h4>Resampling filter</h4>
+        <p>
+          Resizing uses the canvas <code>drawImage</code> call with the browser's default smoothing. This is a bilinear-class filter whose exact behaviour depends on the browser and, for large reduction factors, may alias fine texture.
+          It is not a documented anti-aliasing filter such as Lanczos or area averaging, which is another reason to fix the browser and version for a study.
+        </p>
+        <h4>Choice of 512 pixels</h4>
+        <p>
+          512 pixels is a pragmatic default that keeps the per-pixel CIEDE2000 calculation fast and memory use low. It was not derived by optimisation or validated against fouling ground truth.
+          Because small fouling features may be lost at low resolution, it is good practice to repeat the analysis at 1024 pixels and check that the ranking and trend of each metric across images agree, and to report the size used.
+          Do not compare absolute values computed at different sizes. Each stored batch result records its size, and changing the size forces recomputation.
+        </p>
+        <p>
+          Version note: before October 2026 the tool clamped width and height independently, which squashed non-square images (for example 4000 x 3000 became 512 x 512).
+          Values produced by that earlier sizing are not comparable with current values, and results stored in the browser from it are discarded automatically.
+        </p>
+
+        <h3 id="m-gray">3. Grayscale conversion</h3>
+        <p>After resizing, the RGB image is converted to a single grayscale channel with the ITU-R BT.601 luma weights:</p>
+        <div class="formula">Gray = 0.299 * R + 0.587 * G + 0.114 * B        (R, G, B in 0..255)</div>
+        <ul>
+          <li>The weights are applied directly to the gamma-encoded sRGB values. This is luma (Y'), the weighted sum used by video standards and by common libraries such as OpenCV's RGB-to-gray conversion and the Pillow "L" mode.</li>
+          <li>It is not physical relative luminance. That would require linearising the sRGB values first and would normally use the Rec. 709 / sRGB weights (0.2126, 0.7152, 0.0722).</li>
+          <li>Values are kept in double precision on the 0 to 255 scale and are not rounded, except inside the entropy histogram (section 4).</li>
+          <li>Resizing is done on the RGB image before conversion to gray.</li>
+          <li>Used by: SSIM, Michelson contrast, intensity standard deviation, histogram entropy and Laplacian variance. PSNR works on the RGB channels and Delta E on CIE L*a*b* values derived from RGB, so neither uses the gray image.</li>
+          <li>Green carries the largest weight, so a green biofilm tint changes the gray image less than it changes colour. Delta E is the metric that captures colour shifts directly.</li>
+          <li>Other weightings give different absolute values. State the formula above when comparing with results from other software.</li>
+        </ul>
+
+        <h3 id="m-metrics">4. Metric definitions as implemented</h3>
+        <div class="table-wrapper" role="region" aria-label="Metric definitions" tabindex="0">
+          <table class="metric-table">
+            <caption>Definitions, inputs and caveats</caption>
+            <thead>
+              <tr><th scope="col">Metric</th><th scope="col">Input</th><th scope="col">Definition</th><th scope="col">Caveats</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">SSIM</th>
+                <td>Gray, reference + monitoring</td>
+                <td>((2 mu_x mu_y + C1)(2 sigma_xy + C2)) / ((mu_x^2 + mu_y^2 + C1)(sigma_x^2 + sigma_y^2 + C2)), with C1 = (0.01 x 255)^2, C2 = (0.03 x 255)^2. Means, variances and covariance are population statistics (divide by N) taken once over the whole image.</td>
+                <td>This is a <strong>global</strong> SSIM, not the windowed mean SSIM of Wang et al. (2004), which uses 11 x 11 Gaussian windows. Values are therefore not comparable with windowed SSIM from other software. It reflects overall luminance, contrast and correlation but not where in the frame differences occur.</td>
+              </tr>
+              <tr>
+                <th scope="row">PSNR</th>
+                <td>RGB, reference + monitoring</td>
+                <td>10 log10(255^2 / MSE), MSE averaged over all pixels and the three colour channels.</td>
+                <td>Infinite when the images are identical. Sensitive to any global brightness or colour shift, including exposure changes.</td>
+              </tr>
+              <tr>
+                <th scope="row">Delta E 2000</th>
+                <td>RGB converted to CIE L*a*b*, reference + monitoring</td>
+                <td>sRGB is linearised, converted to XYZ with the sRGB (D65) matrix, normalised to the D65 white (0.95047, 1.0, 1.08883) and converted to CIELAB. CIEDE2000 (kL = kC = kH = 1) is computed per pixel and the mean over all pixels is reported.</td>
+                <td>The mean hides how colour change is distributed across the frame. No spatial weighting or region of interest is applied.</td>
+              </tr>
+              <tr>
+                <th scope="row">Michelson contrast</th>
+                <td>Gray</td>
+                <td>(Imax - Imin) / (Imax + Imin), using the single brightest and darkest pixel. Returns 0 if both are 0.</td>
+                <td>Determined by two extreme pixels, so glints, dead pixels and noise dominate it and natural scenes often sit close to 1. Treat it as a coarse indicator.</td>
+              </tr>
+              <tr>
+                <th scope="row">Intensity standard deviation</th>
+                <td>Gray</td>
+                <td>Population standard deviation of gray values (divide by N).</td>
+                <td>Depends on exposure and scene content as well as fouling.</td>
+              </tr>
+              <tr>
+                <th scope="row">Histogram entropy</th>
+                <td>Gray</td>
+                <td>Each gray value is rounded to the nearest integer and clamped to 0..255. H = -sum p(i) log2 p(i) over the 256 bins, in bits (maximum 8).</td>
+                <td>Falls with washed-out or flat tonal range; insensitive to spatial arrangement.</td>
+              </tr>
+              <tr>
+                <th scope="row">Laplacian variance</th>
+                <td>Gray</td>
+                <td>Convolution with the 4-neighbour kernel [[0,1,0],[1,-4,1],[0,1,0]] on the 0..255 gray image. Border pixels are not filtered and keep a response of 0. The population variance is taken over the whole array including that border.</td>
+                <td>Sharpness proxy (Pertuz et al., 2013). Strongly dependent on analysis size, and sensor noise raises it, so keep size and exposure settings fixed.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Not implemented in the browser build: BRISQUE and NIQE (which need trained model files) and MTF / ISO 12233 (which needs a calibration chart workflow).
+        </p>
+
+        <h3 id="m-batch">5. Batch procedure</h3>
+        <ul>
+          <li>Every image in a batch is analysed with the same parameters: the same metrics, the same analysis size and, for full-reference metrics, one reference image chosen once.</li>
+          <li>Each image's values depend only on that image (and the reference), so processing order and the number of parallel workers do not change the results. Batch and single-image modes share the same metric and sizing code.</li>
+          <li>Images that cannot be decoded are recorded as failures with the error message. They are never silently dropped, and they can be retried.</li>
+          <li>Each stored result records the analysis size and the reference image used. The exported batch CSV includes both, plus pixel dimensions, capture time and its source.</li>
+          <li>Results are autosaved in the browser (IndexedDB). A result is reused only when the analysis size, sizing-method version and, for full-reference metrics, the reference image are unchanged.</li>
+        </ul>
+
+        <h3 id="m-swell">6. Image timestamps and swell cross-reference</h3>
+        <h4>Capture time</h4>
+        <p>
+          In automatic mode the capture time is taken from the JPEG EXIF DateTimeOriginal tag (falling back to DateTimeDigitized, then DateTime), then from a timestamp in the file name (for example YYYYMMDD_hhmmss, or a 10 or 13 digit Unix time), then from the file's modified time.
+          EXIF times have no time zone unless the camera also writes OffsetTimeOriginal, so the camera clock's UTC offset is a user setting (default -10 hours, Hawaii Standard Time) and is converted to UTC.
+          The file modified time is the least reliable source because copying or syncing can change it. The source used for each image is reported in the table and exports.
+        </p>
+        <h4>Swell data</h4>
+        <p>
+          Delimited text with a header and a recognisable time column is accepted (a single date-time column, separate date and time columns, or the NDBC year / month / day / hour / minute columns).
+          NDBC files are in UTC. Missing-value codes ("MM" and runs of 9s such as 99.0 or 999) are treated as missing. Several files can be merged, and rows are sorted by time.
+          A time zone written in the row takes precedence over the file's UTC offset setting.
+        </p>
+        <h4>Matching</h4>
+        <p>
+          Each image is matched to the nearest swell record in time, provided the gap is within the tolerance (default 30 minutes). There is no interpolation, and the gap is exported.
+          Wave observations are averages over a sampling window and are measured at the buoy, which may be some distance from the camera site, so the swell variable is a proxy for local conditions, not a measurement of them.
+        </p>
+        <h4>Statistics</h4>
+        <ul>
+          <li>Association between an optical metric and a swell variable is the Spearman rank correlation: the Pearson correlation of the average ranks of the pairs where both values are present (at least 5 pairs).</li>
+          <li>
+            The detrended value removes a linear time trend (time in days) from both rank series by least squares and correlates the residuals. This equals the partial rank correlation controlling for linear time. It matters because fouling accumulates steadily, and any variable that also drifts over the deployment will correlate with it without any causal link.
+          </li>
+          <li>
+            Direction variables (names such as MWD, Dp, WDIR) cannot be ranked on a circle, so a circular-linear correlation R is used (Mardia, 1976):
+            <div class="formula">R = sqrt( (r_xc^2 + r_xs^2 - 2 r_xc r_xs r_cs) / (1 - r_cs^2) )</div>
+            where x is the rank-transformed optical metric, c = cos(theta), s = sin(theta), and r are Pearson correlations. R ranges from 0 to 1 and has no sign. The detrended value applies the same formula to time-detrended series.
+          </li>
+          <li>No p-values or confidence intervals are reported. Consecutive images and consecutive wave records are serially correlated, which breaks the independence assumption of standard tests, and many metric and variable pairs are examined at once. The table is exploratory. For inference use methods that account for autocorrelation, such as block bootstrap or time-series regression, and correct for multiple comparisons.</li>
+        </ul>
+
+        <h3 id="m-limits">7. Limitations and threats to validity</h3>
+        <ul>
+          <li><strong>Camera settings:</strong> automatic exposure, gain and white balance change contrast, entropy, standard deviation and Delta E independently of fouling. Fixed manual settings, or a reference target in the frame, greatly strengthen any conclusion.</li>
+          <li><strong>Illumination and water clarity:</strong> sun angle, time of day, tide and turbidity change the optics of every frame. Turbidity and lighting can themselves co-vary with swell, which confounds a swell cross-reference. Consider comparing frames at similar times of day.</li>
+          <li><strong>Whole-frame metrics:</strong> there is no segmentation or region of interest, so water, background and structure are analysed along with the fouled surface.</li>
+          <li><strong>No calibration to fouling cover:</strong> the metrics are optical indices and are not calibrated against percent cover, biomass or a fouling rating scale.</li>
+          <li><strong>Image pipeline:</strong> JPEG compression, in-camera sharpening and browser-dependent resampling all affect absolute values.</li>
+          <li><strong>Global SSIM and Michelson contrast</strong> are simplified versions of their literature counterparts (section 4).</li>
+        </ul>
+
+        <h3 id="m-repro">8. Reproducibility and reporting</h3>
+        <p>Report at least the following so another group can reproduce the numbers:</p>
+        <ul>
+          <li>The tool address or repository revision, the date of use, and the browser and version.</li>
+          <li>The analysis size, and the identity of the reference image for full-reference metrics.</li>
+          <li>The camera model, whether exposure and white balance were fixed, and the image acquisition interval.</li>
+          <li>The capture-time source, the camera clock offset, the swell data source (station or model, retrieval date, variables), and the matching tolerance.</li>
+          <li>Whether correlations were raw or detrended, and that no significance testing was applied.</li>
+        </ul>
+        <h4>Suggested methods paragraph (adapt the bracketed parts)</h4>
+        <div class="paste-block" id="methodsParagraph">Optical metrics were computed with the open-source Biofouling Analyser (https://github.com/oceaneboulais/biofouling-analyzer; accessed [date]; [browser and version]). Each image was decoded in the browser, scaled so that its long edge was [512] px (aspect ratio preserved, no cropping or upscaling) and converted to grayscale with ITU-R BT.601 luma weights (0.299 R + 0.587 G + 0.114 B) applied to gamma-encoded sRGB values. Full-reference metrics (global SSIM, PSNR and mean CIEDE2000 Delta E) were computed against a clean pre-deployment reference frame ([file name]); no-reference metrics (Michelson contrast, grayscale standard deviation, 256-bin Shannon entropy and variance of the 4-neighbour Laplacian) were computed from each frame alone. Capture times were taken from [EXIF DateTimeOriginal, camera clock UTC[-10] h] and matched to the nearest [station] wave record within [30] min. Associations were summarised with Spearman rank correlation, with and without removal of a linear time trend; no significance tests were applied because of serial autocorrelation.</div>
+        <div class="btn-row"><button class="btn" id="copyMethodsBtn" type="button">Copy paragraph</button><span class="status-line" id="copyMethodsStatus" role="status" aria-live="polite"></span></div>
+
+        <h3 id="m-refs">9. References</h3>
+        <ul>
+          <li>Hore, A. and Ziou, D. (2010). Image quality metrics: PSNR vs. SSIM. <em>Proc. 20th International Conference on Pattern Recognition</em>, 2366-2369.</li>
+          <li>IEC 61966-2-1 (1999). Multimedia systems and equipment: Colour measurement and management. Part 2-1: Default RGB colour space, sRGB.</li>
+          <li>ITU-R Recommendation BT.601. Studio encoding parameters of digital television for standard 4:3 and wide-screen 16:9 aspect ratios.</li>
+          <li>Mardia, K. V. (1976). Linear-circular correlation coefficients and rhythmometry. <em>Biometrika</em>, 63(2), 403-405.</li>
+          <li>Michelson, A. A. (1927). <em>Studies in Optics</em>. University of Chicago Press.</li>
+          <li>NOAA National Data Buoy Center. Measurement descriptions and units. https://www.ndbc.noaa.gov/faq/measdes.shtml</li>
+          <li>Pertuz, S., Puig, D. and Garcia, M. A. (2013). Analysis of focus measure operators for shape-from-focus. <em>Pattern Recognition</em>, 46(5), 1415-1432.</li>
+          <li>Shannon, C. E. (1948). A mathematical theory of communication. <em>Bell System Technical Journal</em>, 27, 379-423 and 623-656.</li>
+          <li>Sharma, G., Wu, W. and Dalal, E. N. (2005). The CIEDE2000 color-difference formula: implementation notes, supplementary test data, and mathematical observations. <em>Color Research and Application</em>, 30(1), 21-30.</li>
+          <li>Spearman, C. (1904). The proof and measurement of association between two things. <em>American Journal of Psychology</em>, 15(1), 72-101.</li>
+          <li>Wang, Z., Bovik, A. C., Sheikh, H. R. and Simoncelli, E. P. (2004). Image quality assessment: from error visibility to structural similarity. <em>IEEE Transactions on Image Processing</em>, 13(4), 600-612.</li>
+        </ul>
+      </article>
     </section>
   </main>
 
@@ -3237,10 +3600,11 @@ const BFLib = (function () {
 
       function buildBatchCsvBlob() {
         const metricCols = METRIC_ORDER.filter((m) => getSortedRecords().some((r) => r.metrics[m] !== undefined));
-        const header = ["path", "size_bytes", "width", "height", "status", "error", "captured_utc", "time_source", ...metricCols];
+        const header = ["path", "size_bytes", "width", "height", "status", "error", "captured_utc", "time_source", "analysis_long_edge_px", "reference_image", ...metricCols];
         const rows = getSortedRecords().map((r) => {
           const t = resolveImageTime(r);
-          return [r.path, r.size, r.width, r.height, r.status, r.error, fmtTime(t), t ? t.src : "", ...metricCols.map((m) => r.metrics[m])];
+          const refPath = r.refKey ? r.refKey.replace(/\|\d+\|\d+$/, "") : "";
+          return [r.path, r.size, r.width, r.height, r.status, r.error, fmtTime(t), t ? t.src : "", r.maxDim || "", refPath, ...metricCols.map((m) => r.metrics[m])];
         });
         return new Blob([BFLib.toCsv(header, rows)], { type: "text/csv" });
       }
@@ -3467,6 +3831,68 @@ const BFLib = (function () {
       swellRunBtn.addEventListener("click", runCrossRef);
       swellExportBtn.addEventListener("click", () => {
         if (lastJoin) downloadBlob(buildMergedCsvBlob(), "biofouling_swell_merged.csv");
+      });
+
+      // ---------- Tabs (Analyzer / Methods) ----------
+
+      const tabViews = {
+        analyzer: { tab: document.getElementById("tab-analyzer"), panel: document.getElementById("analyzer-view") },
+        methods: { tab: document.getElementById("tab-methods"), panel: document.getElementById("methods-view") }
+      };
+
+      function showTab(name) {
+        for (const [key, v] of Object.entries(tabViews)) {
+          const active = key === name;
+          v.panel.hidden = !active;
+          v.tab.setAttribute("aria-selected", String(active));
+          v.tab.tabIndex = active ? 0 : -1;
+        }
+      }
+
+      // Anchor links must switch tabs first, because the browser cannot scroll to a hidden element.
+      function routeHash() {
+        const id = decodeURIComponent(location.hash.slice(1));
+        if (!id) return;
+        const target = document.getElementById(id);
+        if (id === "methods") {
+          showTab("methods");
+          document.getElementById("tab-methods").scrollIntoView();
+        } else if (target && tabViews.methods.panel.contains(target)) {
+          showTab("methods");
+          target.scrollIntoView();
+        } else if (target && tabViews.analyzer.panel.contains(target)) {
+          showTab("analyzer");
+          target.scrollIntoView();
+        }
+      }
+
+      Object.entries(tabViews).forEach(([key, v]) => {
+        v.tab.addEventListener("click", () => showTab(key));
+        v.tab.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
+          e.preventDefault();
+          const next = key === "analyzer" ? "methods" : "analyzer";
+          showTab(next);
+          tabViews[next].tab.focus();
+        });
+      });
+      window.addEventListener("hashchange", routeHash);
+      routeHash();
+
+      document.getElementById("copyMethodsBtn").addEventListener("click", async () => {
+        const status = document.getElementById("copyMethodsStatus");
+        const text = document.getElementById("methodsParagraph").textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          status.textContent = "Copied.";
+        } catch (err) {
+          const range = document.createRange();
+          range.selectNodeContents(document.getElementById("methodsParagraph"));
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          status.textContent = "Select and copy the highlighted text (clipboard access was blocked).";
+        }
       });
 
       // Restore results from a previous session (e.g. after a crash or reload).
